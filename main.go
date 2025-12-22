@@ -1,0 +1,95 @@
+package main
+
+import (
+	"auth-service/internal/handlers"
+	"auth-service/internal/middleware"
+	"auth-service/internal/repository"
+	"auth-service/internal/services"
+	"log"
+	"os"
+
+	_ "auth-service/docs"
+
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+)
+
+// @title           JWT Authentication Service API
+// @version         1.0
+// @description     A Keycloak-like JWT-based authentication service built with Go and Gin
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8080
+// @BasePath  /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
+func main() {
+	// Load configuration
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "your-super-secret-key-change-in-production"
+		log.Println("WARNING: Using default JWT_SECRET. Set JWT_SECRET environment variable in production!")
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8081"
+	}
+
+	// Initialize dependencies
+	tokenStore := repository.NewTokenStore()
+	jwtService := services.NewJWTService(jwtSecret, tokenStore)
+	authHandler := handlers.NewAuthHandler(jwtService)
+
+	// Setup Gin router
+	router := gin.Default()
+
+	// Health check endpoints
+	health := router.Group("/health")
+	{
+		health.GET("", authHandler.Health)
+		health.GET("/live", authHandler.HealthLive)
+		health.GET("/ready", authHandler.HealthReady)
+	}
+
+	// Auth endpoints
+	auth := router.Group("/auth")
+	{
+		auth.POST("/register", authHandler.Register)
+		auth.POST("/login", authHandler.Login)
+		auth.POST("/refresh", authHandler.RefreshToken)
+		auth.POST("/logout", middleware.AuthMiddleware(jwtService), authHandler.Logout)
+		auth.POST("/validate-token", authHandler.ValidateToken)
+		auth.POST("/verify-token", authHandler.VerifyToken)
+	}
+
+	// Protected example endpoint
+	protected := router.Group("/api")
+	protected.Use(middleware.AuthMiddleware(jwtService))
+	{
+		protected.GET("/profile", authHandler.GetProfile)
+	}
+
+	// Swagger documentation
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Start server
+	log.Printf("Starting auth service on port %s", port)
+	log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", port)
+
+	if err := router.Run(":" + port); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+}
