@@ -31,11 +31,11 @@ COPY --from=builder /app/auth-service .
 COPY --from=builder /app/docs ./docs
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8081
 
 # Set environment variables
 ENV JWT_SECRET=change-this-in-production
-ENV PORT=8080
+ENV PORT=8081
 
 # Run the application
 CMD ["./auth-service"]
