@@ -44,9 +44,19 @@ func main() {
 		log.Println("WARNING: Using default JWT_SECRET. Set JWT_SECRET environment variable in production!")
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8081"
+	serverPort := os.Getenv("SERVER_PORT")
+	if serverPort == "" {
+		serverPort = "8081"
+	}
+
+	serverHost := os.Getenv("SERVER_HOST")
+	if serverHost == "" {
+		serverHost = "0.0.0.0"
+	}
+
+	ginMode := os.Getenv("GIN_MODE")
+	if ginMode != "" {
+		gin.SetMode(ginMode)
 	}
 
 	// Initialize dependencies
@@ -96,10 +106,11 @@ func main() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Start server
-	log.Printf("Starting auth service on port %s", port)
-	log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", port)
+	serverAddr := serverHost + ":" + serverPort
+	log.Printf("Starting auth service on %s", serverAddr)
+	log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", serverPort)
 
-	if err := router.Run(":" + port); err != nil {
+	if err := router.Run(serverAddr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
