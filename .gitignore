@@ -1,0 +1,91 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+coverage.html
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+
+# Build artifacts
+auth-service
+*.log
+
+# Environment variables - NEVER COMMIT SECRETS!
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Swagger generated docs (optional - can be regenerated)
+# You can commit these if you want, but they can be regenerated with `swag init`
+docs/docs.go
+docs/swagger.json
+docs/swagger.yaml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Database files (if using SQLite for development)
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+logs/
+*.log
+
+# Air live reload (if you use it)
+.air.toml
+tmp/
+
+# Compiled Object files
+*.o
+*.a
+
+# Debug files
+__debug_bin
+
+# Local development certificates
+*.pem
+*.key
+*.crt
+*.p12
+
+# Test cache
+.test_cache/
