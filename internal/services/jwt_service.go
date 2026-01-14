@@ -1,10 +1,10 @@
 package services
 
 import (
+	serrors "auth-service/internal/errors"
 	"auth-service/internal/models"
 	"auth-service/internal/repository"
 	"auth-service/internal/utils"
-	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -54,12 +54,12 @@ func (s *JWTService) Login(email, password string) (*models.TokenResponse, error
 	// Get user
 	user, err := s.tokenStore.GetUserByEmail(email)
 	if err != nil {
-		return nil, errors.New("invalid credentials")
+		return nil, serrors.ErrInvalidCredentials
 	}
 
 	// Check password
 	if !utils.CheckPasswordHash(password, user.Password) {
-		return nil, errors.New("invalid credentials")
+		return nil, serrors.ErrInvalidCredentials
 	}
 
 	// Generate tokens
@@ -80,8 +80,8 @@ func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse
 		return nil, err
 	}
 
-	// Store refresh token
-	if err := s.tokenStore.StoreRefreshToken(user.ID, refreshToken); err != nil {
+	// Store refresh token (store expiry metadata)
+	if err := s.tokenStore.StoreRefreshToken(user.ID, refreshToken, time.Now().Add(RefreshTokenDuration)); err != nil {
 		return nil, err
 	}
 
@@ -118,7 +118,7 @@ func (s *JWTService) generateToken(user *models.User, tokenType string, duration
 func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &models.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
+			return nil, serrors.ErrUnexpectedSigningMethod
 		}
 		return []byte(s.secretKey), nil
 	})
@@ -131,7 +131,7 @@ func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, er
 		return claims, nil
 	}
 
-	return nil, errors.New("invalid token")
+	return nil, serrors.ErrInvalidToken
 }
 
 // RefreshAccessToken refreshes the access token using a refresh token
@@ -139,12 +139,12 @@ func (s *JWTService) RefreshAccessToken(refreshToken string) (*models.TokenRespo
 	// Validate refresh token
 	claims, err := s.ValidateToken(refreshToken)
 	if err != nil {
-		return nil, errors.New("invalid refresh token")
+		return nil, serrors.ErrInvalidRefreshTokenSvc
 	}
 
 	// Check token type
 	if claims.TokenType != TokenTypeRefresh {
-		return nil, errors.New("token is not a refresh token")
+		return nil, serrors.ErrNotRefreshToken
 	}
 
 	// Validate refresh token in store
@@ -154,7 +154,7 @@ func (s *JWTService) RefreshAccessToken(refreshToken string) (*models.TokenRespo
 	}
 
 	if userID != claims.UserID {
-		return nil, errors.New("token user mismatch")
+		return nil, serrors.ErrTokenUserMismatch
 	}
 
 	// Get user

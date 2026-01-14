@@ -1,27 +1,37 @@
 package repository
 
 import (
+	serrors "auth-service/internal/errors"
 	"auth-service/internal/models"
-	"errors"
+	"crypto/sha256"
+	"encoding/hex"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
 
+// RefreshMeta stores metadata about a refresh token
+type RefreshMeta struct {
+	UserID    string
+	IssuedAt  time.Time
+	ExpiresAt time.Time
+}
+
 // TokenStore handles in-memory storage of users and refresh tokens
 type TokenStore struct {
 	users         map[string]*models.User // email -> user
-	refreshTokens map[string]string       // refreshToken -> userID
-	userTokens    map[string][]string     // userID -> []refreshTokens
+	refreshTokens map[string]RefreshMeta  // hashedRefreshToken -> meta
+	userTokens    map[string][]string     // userID -> []hashedRefreshTokens
 	mu            sync.RWMutex
+	stop          chan struct{}
 }
 
 // NewTokenStore creates a new token store
 func NewTokenStore() *TokenStore {
 	return &TokenStore{
 		users:         make(map[string]*models.User),
-		refreshTokens: make(map[string]string),
+		refreshTokens: make(map[string]RefreshMeta),
 		userTokens:    make(map[string][]string),
 	}
 }
@@ -32,7 +42,7 @@ func (ts *TokenStore) CreateUser(email, hashedPassword string, roles []string) (
 	defer ts.mu.Unlock()
 
 	if _, exists := ts.users[email]; exists {
-		return nil, errors.New("user already exists")
+		return nil, serrors.ErrUserExists
 	}
 
 	if roles == nil || len(roles) == 0 {
@@ -57,7 +67,7 @@ func (ts *TokenStore) GetUserByEmail(email string) (*models.User, error) {
 
 	user, exists := ts.users[email]
 	if !exists {
-		return nil, errors.New("user not found")
+		return nil, serrors.ErrUserNotFound
 	}
 
 	return user, nil
@@ -74,22 +84,31 @@ func (ts *TokenStore) GetUserByID(userID string) (*models.User, error) {
 		}
 	}
 
-	return nil, errors.New("user not found")
+	return nil, serrors.ErrUserNotFound
 }
 
-// StoreRefreshToken stores a refresh token
-func (ts *TokenStore) StoreRefreshToken(userID, refreshToken string) error {
+// StoreRefreshToken stores a refresh token (stores only a hash + metadata)
+func (ts *TokenStore) StoreRefreshToken(userID, refreshToken string, expiresAt time.Time) error {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
-	ts.refreshTokens[refreshToken] = userID
-	ts.userTokens[userID] = append(ts.userTokens[userID], refreshToken)
+	// Hash the refresh token before storing
+	h := sha256.Sum256([]byte(refreshToken))
+	key := hex.EncodeToString(h[:])
+
+	ts.refreshTokens[key] = RefreshMeta{
+		UserID:    userID,
+		IssuedAt:  time.Now().UTC(),
+		ExpiresAt: expiresAt,
+	}
+
+	ts.userTokens[userID] = append(ts.userTokens[userID], key)
 
 	// Clean up old tokens (keep last 5 per user)
 	tokens := ts.userTokens[userID]
 	if len(tokens) > 5 {
-		oldToken := tokens[0]
-		delete(ts.refreshTokens, oldToken)
+		oldKey := tokens[0]
+		delete(ts.refreshTokens, oldKey)
 		ts.userTokens[userID] = tokens[1:]
 	}
 
@@ -101,12 +120,20 @@ func (ts *TokenStore) ValidateRefreshToken(refreshToken string) (string, error) 
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
-	userID, exists := ts.refreshTokens[refreshToken]
+	h := sha256.Sum256([]byte(refreshToken))
+	key := hex.EncodeToString(h[:])
+
+	meta, exists := ts.refreshTokens[key]
 	if !exists {
-		return "", errors.New("invalid refresh token")
+		return "", serrors.ErrInvalidRefreshToken
 	}
 
-	return userID, nil
+	// Check expiry
+	if time.Now().UTC().After(meta.ExpiresAt) {
+		return "", serrors.ErrInvalidRefreshToken
+	}
+
+	return meta.UserID, nil
 }
 
 // RevokeRefreshToken revokes a refresh token
@@ -114,18 +141,21 @@ func (ts *TokenStore) RevokeRefreshToken(refreshToken string) error {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
-	userID, exists := ts.refreshTokens[refreshToken]
+	h := sha256.Sum256([]byte(refreshToken))
+	key := hex.EncodeToString(h[:])
+
+	meta, exists := ts.refreshTokens[key]
 	if !exists {
-		return errors.New("token not found")
+		return serrors.ErrTokenNotFound
 	}
 
-	delete(ts.refreshTokens, refreshToken)
+	delete(ts.refreshTokens, key)
 
 	// Remove from user's token list
-	tokens := ts.userTokens[userID]
-	for i, token := range tokens {
-		if token == refreshToken {
-			ts.userTokens[userID] = append(tokens[:i], tokens[i+1:]...)
+	tokens := ts.userTokens[meta.UserID]
+	for i, tokenKey := range tokens {
+		if tokenKey == key {
+			ts.userTokens[meta.UserID] = append(tokens[:i], tokens[i+1:]...)
 			break
 		}
 	}
@@ -143,8 +173,8 @@ func (ts *TokenStore) RevokeAllUserTokens(userID string) error {
 		return nil
 	}
 
-	for _, token := range tokens {
-		delete(ts.refreshTokens, token)
+	for _, tokenKey := range tokens {
+		delete(ts.refreshTokens, tokenKey)
 	}
 
 	delete(ts.userTokens, userID)
@@ -156,9 +186,20 @@ func (ts *TokenStore) CleanExpiredTokens() {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
-	// In a real implementation, you would track token expiration times
-	// For now, this is a placeholder for periodic cleanup
-	// You might implement this with a time.Ticker in production
+	now := time.Now().UTC()
+	for key, meta := range ts.refreshTokens {
+		if now.After(meta.ExpiresAt) {
+			delete(ts.refreshTokens, key)
+			// remove from user's list
+			tokens := ts.userTokens[meta.UserID]
+			for i := 0; i < len(tokens); i++ {
+				if tokens[i] == key {
+					ts.userTokens[meta.UserID] = append(tokens[:i], tokens[i+1:]...)
+					break
+				}
+			}
+		}
+	}
 }
 
 // GetStats returns storage statistics
@@ -174,10 +215,29 @@ func (ts *TokenStore) GetStats() map[string]int {
 
 // StartCleanupRoutine starts a goroutine to periodically clean up expired tokens
 func (ts *TokenStore) StartCleanupRoutine() {
+	if ts.stop != nil {
+		return // already started
+	}
+	ts.stop = make(chan struct{})
 	ticker := time.NewTicker(1 * time.Hour)
 	go func() {
-		for range ticker.C {
-			ts.CleanExpiredTokens()
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				ts.CleanExpiredTokens()
+			case <-ts.stop:
+				return
+			}
 		}
 	}()
+}
+
+// Close stops background routines for the token store
+func (ts *TokenStore) Close() {
+	if ts.stop == nil {
+		return
+	}
+	close(ts.stop)
+	ts.stop = nil
 }
