@@ -18,8 +18,23 @@ type RefreshMeta struct {
 	ExpiresAt time.Time
 }
 
-// TokenStore handles in-memory storage of users and refresh tokens
-type TokenStore struct {
+// TokenStore defines the interface for user and token storage
+type TokenStore interface {
+	CreateUser(email, hashedPassword string, roles []string) (*models.User, error)
+	GetUserByEmail(email string) (*models.User, error)
+	GetUserByID(userID string) (*models.User, error)
+	StoreRefreshToken(userID, refreshToken string, expiresAt time.Time) error
+	ValidateRefreshToken(refreshToken string) (string, error)
+	RevokeRefreshToken(refreshToken string) error
+	RevokeAllUserTokens(userID string) error
+	CleanExpiredTokens()
+	GetStats() map[string]int
+	StartCleanupRoutine()
+	Close()
+}
+
+// InMemoryTokenStore implements TokenStore with in-memory storage
+type InMemoryTokenStore struct {
 	users         map[string]*models.User // email -> user
 	refreshTokens map[string]RefreshMeta  // hashedRefreshToken -> meta
 	userTokens    map[string][]string     // userID -> []hashedRefreshTokens
@@ -28,8 +43,8 @@ type TokenStore struct {
 }
 
 // NewTokenStore creates a new token store
-func NewTokenStore() *TokenStore {
-	return &TokenStore{
+func NewTokenStore() TokenStore {
+	return &InMemoryTokenStore{
 		users:         make(map[string]*models.User),
 		refreshTokens: make(map[string]RefreshMeta),
 		userTokens:    make(map[string][]string),
@@ -37,7 +52,7 @@ func NewTokenStore() *TokenStore {
 }
 
 // CreateUser creates a new user
-func (ts *TokenStore) CreateUser(email, hashedPassword string, roles []string) (*models.User, error) {
+func (ts *InMemoryTokenStore) CreateUser(email, hashedPassword string, roles []string) (*models.User, error) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -61,7 +76,7 @@ func (ts *TokenStore) CreateUser(email, hashedPassword string, roles []string) (
 }
 
 // GetUserByEmail retrieves a user by email
-func (ts *TokenStore) GetUserByEmail(email string) (*models.User, error) {
+func (ts *InMemoryTokenStore) GetUserByEmail(email string) (*models.User, error) {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
@@ -74,7 +89,7 @@ func (ts *TokenStore) GetUserByEmail(email string) (*models.User, error) {
 }
 
 // GetUserByID retrieves a user by ID
-func (ts *TokenStore) GetUserByID(userID string) (*models.User, error) {
+func (ts *InMemoryTokenStore) GetUserByID(userID string) (*models.User, error) {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
@@ -88,7 +103,7 @@ func (ts *TokenStore) GetUserByID(userID string) (*models.User, error) {
 }
 
 // StoreRefreshToken stores a refresh token (stores only a hash + metadata)
-func (ts *TokenStore) StoreRefreshToken(userID, refreshToken string, expiresAt time.Time) error {
+func (ts *InMemoryTokenStore) StoreRefreshToken(userID, refreshToken string, expiresAt time.Time) error {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -116,7 +131,7 @@ func (ts *TokenStore) StoreRefreshToken(userID, refreshToken string, expiresAt t
 }
 
 // ValidateRefreshToken validates a refresh token and returns the user ID
-func (ts *TokenStore) ValidateRefreshToken(refreshToken string) (string, error) {
+func (ts *InMemoryTokenStore) ValidateRefreshToken(refreshToken string) (string, error) {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
@@ -137,7 +152,7 @@ func (ts *TokenStore) ValidateRefreshToken(refreshToken string) (string, error) 
 }
 
 // RevokeRefreshToken revokes a refresh token
-func (ts *TokenStore) RevokeRefreshToken(refreshToken string) error {
+func (ts *InMemoryTokenStore) RevokeRefreshToken(refreshToken string) error {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -164,7 +179,7 @@ func (ts *TokenStore) RevokeRefreshToken(refreshToken string) error {
 }
 
 // RevokeAllUserTokens revokes all refresh tokens for a user
-func (ts *TokenStore) RevokeAllUserTokens(userID string) error {
+func (ts *InMemoryTokenStore) RevokeAllUserTokens(userID string) error {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -182,7 +197,7 @@ func (ts *TokenStore) RevokeAllUserTokens(userID string) error {
 }
 
 // CleanExpiredTokens removes expired tokens (this should be called periodically)
-func (ts *TokenStore) CleanExpiredTokens() {
+func (ts *InMemoryTokenStore) CleanExpiredTokens() {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -203,7 +218,7 @@ func (ts *TokenStore) CleanExpiredTokens() {
 }
 
 // GetStats returns storage statistics
-func (ts *TokenStore) GetStats() map[string]int {
+func (ts *InMemoryTokenStore) GetStats() map[string]int {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
@@ -214,7 +229,7 @@ func (ts *TokenStore) GetStats() map[string]int {
 }
 
 // StartCleanupRoutine starts a goroutine to periodically clean up expired tokens
-func (ts *TokenStore) StartCleanupRoutine() {
+func (ts *InMemoryTokenStore) StartCleanupRoutine() {
 	if ts.stop != nil {
 		return // already started
 	}
@@ -234,7 +249,7 @@ func (ts *TokenStore) StartCleanupRoutine() {
 }
 
 // Close stops background routines for the token store
-func (ts *TokenStore) Close() {
+func (ts *InMemoryTokenStore) Close() {
 	if ts.stop == nil {
 		return
 	}

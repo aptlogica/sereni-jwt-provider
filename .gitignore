@@ -10,16 +10,10 @@ dist/
 # Test binary, built with `go test -c`
 *.test
 
-# Go test files
-*_test.go
-
 # Output of the go coverage tool
 *.out
-coverage.txt
-coverage.html
 
-# Coverage report
-report.md
+
 
 # Go workspace file
 go.work

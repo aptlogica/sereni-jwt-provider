@@ -21,11 +21,11 @@ const (
 // JWTService handles JWT operations
 type JWTService struct {
 	secretKey  string
-	tokenStore *repository.TokenStore
+	tokenStore repository.TokenStore
 }
 
 // NewJWTService creates a new JWT service
-func NewJWTService(secretKey string, tokenStore *repository.TokenStore) *JWTService {
+func NewJWTService(secretKey string, tokenStore repository.TokenStore) *JWTService {
 	return &JWTService{
 		secretKey:  secretKey,
 		tokenStore: tokenStore,
