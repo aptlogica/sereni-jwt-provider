@@ -21,7 +21,7 @@ RUN swag init -g main.go -o docs
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # Run stage
-FROM alpine:latest
+FROM alpine:3.20
 
 WORKDIR /app
 
