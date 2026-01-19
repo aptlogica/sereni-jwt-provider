@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"auth-service/internal/errors"
 	"auth-service/internal/models"
 	"auth-service/internal/services"
 	"auth-service/internal/utils"
@@ -42,7 +43,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	user, err := h.jwtService.Register(req.Email, req.Password, req.Roles)
 	if err != nil {
-		if err.Error() == "user already exists" {
+
+		if err == errors.ErrUserExists {
 			utils.SendError(c, http.StatusConflict, "USER_EXISTS", "User with this email already exists")
 			return
 		}
@@ -246,32 +248,9 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 // @Router       /health [get]
 func (h *AuthHandler) Health(c *gin.Context) {
 	utils.SendSuccess(c, "HEALTHY", "Service is healthy", map[string]string{
-		"status": "UP",
+		"status": "healthy",
 	})
 }
 
 // HealthLive godoc
-// @Summary      Liveness probe
-// @Description  Kubernetes liveness probe endpoint
-// @Tags         health
-// @Produce      json
-// @Success      200 {object} models.SuccessResponse{data=map[string]string}
-// @Router       /health/live [get]
-func (h *AuthHandler) HealthLive(c *gin.Context) {
-	utils.SendSuccess(c, "ALIVE", "Service is alive", map[string]string{
-		"status": "alive",
-	})
-}
-
-// HealthReady godoc
-// @Summary      Readiness probe
-// @Description  Kubernetes readiness probe endpoint
-// @Tags         health
-// @Produce      json
-// @Success      200 {object} models.SuccessResponse{data=map[string]string}
-// @Router       /health/ready [get]
-func (h *AuthHandler) HealthReady(c *gin.Context) {
-	utils.SendSuccess(c, "READY", "Service is ready", map[string]string{
-		"status": "ready",
-	})
-}
+// (Removed HealthLive and HealthReady handlers; only Health remains)

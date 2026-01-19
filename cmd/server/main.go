@@ -8,10 +8,11 @@ import (
 	"log"
 	"os"
 
-	_ "auth-service/docs"
+	_ "auth-service/docs/swagger"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -37,11 +38,15 @@ import (
 // @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: Error loading .env file: %v", err)
+	}
+
 	// Load configuration
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "your-super-secret-key-change-in-production"
-		log.Println("WARNING: Using default JWT_SECRET. Set JWT_SECRET environment variable in production!")
+		log.Fatal("JWT_SECRET environment variable is required — refusing to start")
 	}
 
 	serverPort := os.Getenv("SERVER_PORT")
@@ -61,6 +66,8 @@ func main() {
 
 	// Initialize dependencies
 	tokenStore := repository.NewTokenStore()
+	tokenStore.StartCleanupRoutine()
+	defer tokenStore.Close()
 	jwtService := services.NewJWTService(jwtSecret, tokenStore)
 	authHandler := handlers.NewAuthHandler(jwtService)
 
@@ -76,12 +83,10 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	// Health check endpoints
+	// Health check endpoint (only root /health kept)
 	health := router.Group("/health")
 	{
 		health.GET("", authHandler.Health)
-		health.GET("/live", authHandler.HealthLive)
-		health.GET("/ready", authHandler.HealthReady)
 	}
 
 	// Auth endpoints
