@@ -39,8 +39,9 @@ RUN apk --no-cache add ca-certificates tzdata curl
 
 WORKDIR /app
 
-# Copy binary from builder
-COPY --from=builder /app/main ./cmd/server/main.go
+
+# Copy built binary from builder to the expected location
+COPY --from=builder /app/main ./cmd/server/main
 
 # Copy Swagger documentation
 COPY --from=builder /app/docs ./docs
@@ -60,4 +61,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8081/health || exit 1
 
 # Run the application
-CMD [".cmd/server/main"]
+CMD ["./main"]
