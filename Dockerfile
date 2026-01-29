@@ -27,7 +27,7 @@ RUN swag init -g cmd/server/main.go -o docs
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o main .
+    -o main cmd/server
 
 # ==============================================================================
 # Production Stage
@@ -40,8 +40,8 @@ RUN apk --no-cache add ca-certificates tzdata curl
 WORKDIR /app
 
 
-# Copy built binary from builder to the expected location
-COPY --from=builder /app/main ./cmd/server/main
+# Copy built binary from builder
+COPY --from=builder /app/main ./main
 
 # Copy Swagger documentation
 COPY --from=builder /app/docs ./docs
