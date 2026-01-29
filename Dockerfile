@@ -27,7 +27,7 @@ RUN swag init -g cmd/server/main.go -o docs
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o main cmd/server
+    -o main ./cmd/server
 
 # ==============================================================================
 # Production Stage
