@@ -1,36 +1,63 @@
-# Build stage
+# ==============================================================================
+# Build Stage
+# ==============================================================================
 FROM golang:1.23-alpine AS builder
 
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
 WORKDIR /app
 
-# Install git for fetching dependencies
-RUN apk add --no-cache git
-
+# Copy dependency files for better layer caching
 COPY go.mod go.sum ./
-RUN go mod download
 
-COPY . .
+# Download dependencies
+RUN go mod download && go mod verify
 
-# Install swag tool for generating Swagger docs
+# Install Swagger CLI tool
 RUN go install github.com/swaggo/swag/cmd/swag@latest
 
+# Copy source code
+COPY . .
+
 # Generate Swagger documentation
-RUN swag init -g main.go -o docs
+RUN swag init -g cmd/server/main.go -o docs
 
-# Build the Go binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+# Build the application with optimizations
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags='-w -s -extldflags "-static"' \
+    -a -installsuffix cgo \
+    -o main .
 
-# Run stage
+# ==============================================================================
+# Production Stage
+# ==============================================================================
 FROM alpine:3.20
+
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata curl
 
 WORKDIR /app
 
-# Install ca-certificates for HTTPS calls
-RUN apk add --no-cache ca-certificates
+# Copy binary from builder
+COPY --from=builder /app/main ./cmd/server/main.go
 
-COPY --from=builder /app/main .
+# Copy Swagger documentation
+COPY --from=builder /app/docs ./docs
 
-# Expose the application port
+# Create non-root user for security
+RUN adduser -D -s /bin/sh jwtprovider && \
+    chown -R jwtprovider:jwtprovider /app
+
+# Switch to non-root user
+USER jwtprovider
+
+# Expose application port
 EXPOSE 8081
 
-CMD ["./main"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8081/health || exit 1
+
+# Run the application
+CMD [".cmd/server/main"]
