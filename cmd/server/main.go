@@ -1,6 +1,7 @@
 package main
 
 import (
+	"auth-service/internal/config"
 	"auth-service/internal/handlers"
 	"auth-service/internal/middleware"
 	"auth-service/internal/repository"
@@ -44,19 +45,9 @@ func main() {
 	}
 
 	// Load configuration
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
+	cfg := config.LoadConfig()
+	if cfg.JWTSecret == "" {
 		log.Fatal("JWT_SECRET environment variable is required — refusing to start")
-	}
-
-	serverPort := os.Getenv("SERVER_PORT")
-	if serverPort == "" {
-		serverPort = "8081"
-	}
-
-	serverHost := os.Getenv("SERVER_HOST")
-	if serverHost == "" {
-		serverHost = "0.0.0.0"
 	}
 
 	ginMode := os.Getenv("GIN_MODE")
@@ -68,7 +59,7 @@ func main() {
 	tokenStore := repository.NewTokenStore()
 	tokenStore.StartCleanupRoutine()
 	defer tokenStore.Close()
-	jwtService := services.NewJWTService(jwtSecret, tokenStore)
+	jwtService := services.NewJWTService(cfg.JWTSecret, tokenStore)
 	authHandler := handlers.NewAuthHandler(jwtService)
 
 	// Setup Gin router
@@ -111,9 +102,9 @@ func main() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Start server
-	serverAddr := serverHost + ":" + serverPort
+	serverAddr := cfg.ServerHost + ":" + cfg.ServerPort
 	log.Printf("Starting auth service on %s", serverAddr)
-	log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", serverPort)
+	log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", cfg.ServerPort)
 
 	if err := router.Run(serverAddr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
