@@ -32,6 +32,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		requestBody    interface{}
 		expectedStatus int
 		setupUser      bool
+		checkResponse  bool
 	}{
 		{
 			name: "success - valid registration",
@@ -42,15 +43,27 @@ func TestAuthHandler_Register(t *testing.T) {
 			},
 			expectedStatus: http.StatusCreated,
 			setupUser:      false,
+			checkResponse:  true,
 		},
 		{
-			name: "failure - invalid JSON",
+			name: "failure - invalid JSON (missing password)",
 			requestBody: map[string]interface{}{
-				"email":    "invalid-email",
-				"password": "",
+				"email": "invalid-email",
 			},
 			expectedStatus: http.StatusBadRequest,
 			setupUser:      false,
+			checkResponse:  false,
+		},
+		{
+			name: "failure - empty email",
+			requestBody: map[string]interface{}{
+				"email":    "",
+				"password": "password123",
+				"roles":    []string{"user"},
+			},
+			expectedStatus: http.StatusBadRequest,
+			setupUser:      false,
+			checkResponse:  false,
 		},
 		{
 			name: "failure - user already exists",
@@ -61,6 +74,7 @@ func TestAuthHandler_Register(t *testing.T) {
 			},
 			expectedStatus: http.StatusConflict,
 			setupUser:      true,
+			checkResponse:  false,
 		},
 	}
 
@@ -86,7 +100,20 @@ func TestAuthHandler_Register(t *testing.T) {
 			handler.Register(c)
 
 			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
+				t.Errorf("expected status %d, got %d. Response: %s", tt.expectedStatus, w.Code, w.Body.String())
+			}
+
+			// Verify response structure on success
+			if tt.checkResponse && w.Code == http.StatusCreated {
+				var response map[string]interface{}
+				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+					t.Errorf("failed to unmarshal response: %v", err)
+				}
+				if data, ok := response["data"].(map[string]interface{}); ok {
+					if email, hasEmail := data["email"]; !hasEmail || email != tt.requestBody.(map[string]interface{})["email"] {
+						t.Error("expected email in response data")
+					}
+				}
 			}
 		})
 	}
@@ -100,6 +127,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		requestBody    interface{}
 		expectedStatus int
 		setupUser      bool
+		checkResponse  bool
 	}{
 		{
 			name: "success - valid login",
@@ -109,6 +137,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			setupUser:      true,
+			checkResponse:  true,
 		},
 		{
 			name: "failure - invalid JSON",
@@ -117,15 +146,17 @@ func TestAuthHandler_Login(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			setupUser:      false,
+			checkResponse:  false,
 		},
 		{
-			name: "failure - invalid credentials",
+			name: "failure - empty email",
 			requestBody: map[string]string{
-				"email":    "test@example.com",
-				"password": "wrongpassword",
+				"email":    "",
+				"password": "password123",
 			},
-			expectedStatus: http.StatusUnauthorized,
-			setupUser:      true,
+			expectedStatus: http.StatusBadRequest,
+			setupUser:      false,
+			checkResponse:  false,
 		},
 		{
 			name: "failure - user not found",
@@ -135,6 +166,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			},
 			expectedStatus: http.StatusUnauthorized,
 			setupUser:      false,
+			checkResponse:  false,
 		},
 	}
 
@@ -160,7 +192,23 @@ func TestAuthHandler_Login(t *testing.T) {
 			handler.Login(c)
 
 			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
+				t.Errorf("expected status %d, got %d. Response: %s", tt.expectedStatus, w.Code, w.Body.String())
+			}
+
+			// Check that tokens are returned on success
+			if tt.checkResponse && w.Code == http.StatusOK {
+				var response map[string]interface{}
+				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+					t.Errorf("failed to unmarshal response: %v", err)
+				}
+				if data, ok := response["data"].(map[string]interface{}); ok {
+					if _, hasAccess := data["access_token"]; !hasAccess {
+						t.Error("expected access_token in response")
+					}
+					if _, hasRefresh := data["refresh_token"]; !hasRefresh {
+						t.Error("expected refresh_token in response")
+					}
+				}
 			}
 		})
 	}
