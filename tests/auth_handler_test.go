@@ -37,6 +37,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		{
 			name: "success - valid registration",
 			requestBody: map[string]interface{}{
+				"user_id":  "new-user-123",
 				"email":    "test@example.com",
 				"password": "password123",
 				"roles":    []string{"user"},
@@ -46,9 +47,21 @@ func TestAuthHandler_Register(t *testing.T) {
 			checkResponse:  true,
 		},
 		{
+			name: "failure - missing user_id",
+			requestBody: map[string]interface{}{
+				"email":    "test@example.com",
+				"password": "password123",
+				"roles":    []string{"user"},
+			},
+			expectedStatus: http.StatusBadRequest,
+			setupUser:      false,
+			checkResponse:  false,
+		},
+		{
 			name: "failure - invalid JSON (missing password)",
 			requestBody: map[string]interface{}{
-				"email": "invalid-email",
+				"user_id": "test-user-id",
+				"email":   "invalid-email",
 			},
 			expectedStatus: http.StatusBadRequest,
 			setupUser:      false,
@@ -57,6 +70,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		{
 			name: "failure - empty email",
 			requestBody: map[string]interface{}{
+				"user_id":  "test-user-id",
 				"email":    "",
 				"password": "password123",
 				"roles":    []string{"user"},
@@ -68,6 +82,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		{
 			name: "failure - user already exists",
 			requestBody: map[string]interface{}{
+				"user_id":  "duplicate-user-id",
 				"email":    "existing@example.com",
 				"password": "password123",
 				"roles":    []string{"user"},
@@ -87,7 +102,7 @@ func TestAuthHandler_Register(t *testing.T) {
 			// Setup existing user if needed
 			if tt.setupUser {
 				hashedPassword, _ := utils.HashPassword("password123")
-				tokenStore.CreateUser("existing@example.com", hashedPassword, []string{"user"})
+				tokenStore.CreateUser("existing-user-id", "existing@example.com", hashedPassword, []string{"user"})
 			}
 
 			w := httptest.NewRecorder()
@@ -179,7 +194,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			// Setup user if needed
 			if tt.setupUser {
 				hashedPassword, _ := utils.HashPassword("password123")
-				tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 			}
 
 			w := httptest.NewRecorder()
@@ -277,7 +292,7 @@ func TestAuthHandler_RefreshToken(t *testing.T) {
 			if tt.setupTokens {
 				// Setup user and get valid refresh token
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				pair, _ := jwtService.GenerateTokenPair(user)
 				refreshToken = pair.RefreshToken
 				tt.requestBody.(map[string]string)["refresh_token"] = refreshToken
@@ -344,7 +359,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 			if tt.setupTokens {
 				// Setup user and get valid refresh token
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				pair, _ := jwtService.GenerateTokenPair(user)
 				refreshToken = pair.RefreshToken
 				tt.requestBody.(map[string]string)["refresh_token"] = refreshToken
@@ -411,7 +426,7 @@ func TestAuthHandler_ValidateToken(t *testing.T) {
 			if tt.setupTokens {
 				// Setup user and get valid access token
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				pair, _ := jwtService.GenerateTokenPair(user)
 				accessToken = pair.AccessToken
 				tt.requestBody.(map[string]string)["token"] = accessToken
@@ -482,7 +497,7 @@ func TestAuthHandler_VerifyToken(t *testing.T) {
 			if tt.setupTokens {
 				// Setup user and get valid access token
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				pair, _ := jwtService.GenerateTokenPair(user)
 				accessToken = pair.AccessToken
 				tt.requestBody.(map[string]string)["token"] = accessToken
@@ -553,7 +568,7 @@ func TestAuthHandler_GetProfile(t *testing.T) {
 			if tt.setupUserID && tt.userID == "valid-user-id" {
 				// Setup user
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				userID = user.ID
 			} else if tt.setupUserID {
 				userID = tt.userID

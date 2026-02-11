@@ -18,20 +18,23 @@ func TestNewTokenStore(t *testing.T) {
 func TestTokenStore_CreateUser(t *testing.T) {
 	tests := []struct {
 		name        string
+		userID      string
 		email       string
 		password    string
 		roles       []string
 		expectError bool
 	}{
 		{
-			name:        "success - valid user creation",
+			name:        "success - valid user creation with custom ID",
+			userID:      "custom-user-123",
 			email:       "test@example.com",
 			password:    "hashedpass",
 			roles:       []string{"user"},
 			expectError: false,
 		},
 		{
-			name:        "success - empty roles defaults to user",
+			name:        "success - empty userID generates UUID",
+			userID:      "",
 			email:       "test2@example.com",
 			password:    "hashedpass",
 			roles:       nil,
@@ -39,6 +42,7 @@ func TestTokenStore_CreateUser(t *testing.T) {
 		},
 		{
 			name:        "failure - duplicate email",
+			userID:      "another-user-456",
 			email:       "test@example.com",
 			password:    "hashedpass2",
 			roles:       []string{"admin"},
@@ -52,10 +56,10 @@ func TestTokenStore_CreateUser(t *testing.T) {
 
 			// Create first user for duplicate test
 			if tt.expectError && tt.name == "failure - duplicate email" {
-				store.CreateUser("test@example.com", "hashedpass", []string{"user"})
+				store.CreateUser("first-user-id", "test@example.com", "hashedpass", []string{"user"})
 			}
 
-			user, err := store.CreateUser(tt.email, tt.password, tt.roles)
+			user, err := store.CreateUser(tt.userID, tt.email, tt.password, tt.roles)
 			if tt.expectError {
 				if err == nil {
 					t.Error("expected error, got nil")
@@ -76,6 +80,10 @@ func TestTokenStore_CreateUser(t *testing.T) {
 				if user.ID == "" {
 					t.Error("expected non-empty user ID")
 				}
+				// Check if custom userID was used
+				if tt.userID != "" && user.ID != tt.userID {
+					t.Errorf("expected user ID %s, got %s", tt.userID, user.ID)
+				}
 				expectedRoles := tt.roles
 				if tt.roles == nil || len(tt.roles) == 0 {
 					expectedRoles = []string{"user"}
@@ -92,7 +100,7 @@ func TestTokenStore_GetUserByEmail(t *testing.T) {
 	store := repository.NewTokenStore()
 
 	// Create user
-	user, err := store.CreateUser("test@example.com", "hashedpass", []string{"user"})
+	user, err := store.CreateUser("test-user-id", "test@example.com", "hashedpass", []string{"user"})
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
@@ -198,7 +206,7 @@ func TestTokenStore_GetUserByID(t *testing.T) {
 	store := repository.NewTokenStore()
 
 	// Create user
-	user, err := store.CreateUser("test@example.com", "hashedpass", []string{"user"})
+	user, err := store.CreateUser("test-user-id", "test@example.com", "hashedpass", []string{"user"})
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
@@ -255,11 +263,11 @@ func TestTokenStore_GetStats(t *testing.T) {
 	store := repository.NewTokenStore()
 
 	// Create users and tokens
-	_, err := store.CreateUser("user1@example.com", "pass", []string{"user"})
+	_, err := store.CreateUser("user1-id", "user1@example.com", "pass", []string{"user"})
 	if err != nil {
 		t.Fatalf("failed to create user1: %v", err)
 	}
-	_, err = store.CreateUser("user2@example.com", "pass", []string{"user"})
+	_, err = store.CreateUser("user2-id", "user2@example.com", "pass", []string{"user"})
 	if err != nil {
 		t.Fatalf("failed to create user2: %v", err)
 	}

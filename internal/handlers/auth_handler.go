@@ -41,7 +41,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.jwtService.Register(req.Email, req.Password, req.Roles)
+	user, err := h.jwtService.Register(req.UserID, req.Email, req.Password, req.Roles)
 	if err != nil {
 
 		if err == errors.ErrUserExists {

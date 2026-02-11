@@ -45,6 +45,7 @@ func TestNewJWTService(t *testing.T) {
 func TestJWTService_Register(t *testing.T) {
 	tests := []struct {
 		name        string
+		userID      string
 		email       string
 		password    string
 		roles       []string
@@ -52,6 +53,7 @@ func TestJWTService_Register(t *testing.T) {
 	}{
 		{
 			name:        "success - valid registration",
+			userID:      "test-user-123",
 			email:       "test@example.com",
 			password:    "password123",
 			roles:       []string{"user"},
@@ -59,6 +61,7 @@ func TestJWTService_Register(t *testing.T) {
 		},
 		{
 			name:        "failure - duplicate email",
+			userID:      "test-user-456",
 			email:       "test@example.com",
 			password:    "password456",
 			roles:       []string{"admin"},
@@ -73,10 +76,10 @@ func TestJWTService_Register(t *testing.T) {
 
 			// Register first user for duplicate test
 			if tt.expectError {
-				_, _ = service.Register("test@example.com", "password123", []string{"user"})
+				_, _ = service.Register("existing-user-id", "test@example.com", "password123", []string{"user"})
 			}
 
-			user, err := service.Register(tt.email, tt.password, tt.roles)
+			user, err := service.Register(tt.userID, tt.email, tt.password, tt.roles)
 			if tt.expectError {
 				if err == nil {
 					t.Error("expected error, got nil")
@@ -93,6 +96,9 @@ func TestJWTService_Register(t *testing.T) {
 				}
 				if user.Email != tt.email {
 					t.Errorf("expected email %s, got %s", tt.email, user.Email)
+				}
+				if user.ID != tt.userID {
+					t.Errorf("expected user ID %s, got %s", tt.userID, user.ID)
 				}
 			}
 		})
@@ -137,7 +143,7 @@ func TestJWTService_Login(t *testing.T) {
 
 			// Register user for tests that need it
 			if tt.setupUser {
-				_, _ = service.Register("test@example.com", "password123", []string{"user"})
+				_, _ = service.Register("test-user-id", "test@example.com", "password123", []string{"user"})
 			}
 
 			tokens, err := service.Login(tt.email, tt.password)
@@ -213,7 +219,7 @@ func TestJWTService_ValidateToken(t *testing.T) {
 			var validToken string
 			if !tt.expectError {
 				// Setup valid token
-				_, _ = service.Register("test@example.com", "password123", []string{"user", "admin"})
+				_, _ = service.Register("test-user-id", "test@example.com", "password123", []string{"user", "admin"})
 				tokens, _ := service.Login("test@example.com", "password123")
 				if tt.tokenType == "refresh" {
 					validToken = tokens.RefreshToken
@@ -282,7 +288,7 @@ func TestJWTService_GetUserProfile(t *testing.T) {
 			var validUserID string
 			if !tt.expectError {
 				// Setup user
-				user, _ := service.Register("test@example.com", "password123", []string{"user"})
+				user, _ := service.Register("test-user-id", "test@example.com", "password123", []string{"user"})
 				validUserID = user.ID
 			}
 
@@ -323,7 +329,7 @@ func TestJWTService_RefreshAccessToken(t *testing.T) {
 		{
 			name: "success - valid refresh token",
 			setupFunc: func(service *services.JWTService) string {
-				_, _ = service.Register("test@example.com", "password123", []string{"user"})
+				_, _ = service.Register("test-user-id", "test@example.com", "password123", []string{"user"})
 				tokens, _ := service.Login("test@example.com", "password123")
 				return tokens.RefreshToken
 			},
@@ -337,7 +343,7 @@ func TestJWTService_RefreshAccessToken(t *testing.T) {
 		{
 			name: "failure - access token used as refresh token",
 			setupFunc: func(service *services.JWTService) string {
-				_, _ = service.Register("test@example.com", "password123", []string{"user"})
+				_, _ = service.Register("test-user-id", "test@example.com", "password123", []string{"user"})
 				tokens, _ := service.Login("test@example.com", "password123")
 				return tokens.AccessToken // Using access token instead of refresh
 			},
@@ -346,7 +352,7 @@ func TestJWTService_RefreshAccessToken(t *testing.T) {
 		{
 			name: "failure - revoked refresh token",
 			setupFunc: func(service *services.JWTService) string {
-				_, _ = service.Register("test@example.com", "password123", []string{"user"})
+				_, _ = service.Register("test-user-id", "test@example.com", "password123", []string{"user"})
 				tokens, _ := service.Login("test@example.com", "password123")
 				refreshToken := tokens.RefreshToken
 				// Revoke the token
@@ -404,7 +410,7 @@ func TestJWTService_Logout(t *testing.T) {
 		{
 			name: "success - logout with valid refresh token",
 			setupFunc: func(service *services.JWTService) string {
-				_, _ = service.Register("test@example.com", "password123", []string{"user"})
+				_, _ = service.Register("test-user-id", "test@example.com", "password123", []string{"user"})
 				tokens, _ := service.Login("test@example.com", "password123")
 				return tokens.RefreshToken
 			},
@@ -463,7 +469,7 @@ func TestJWTService_LogoutAll(t *testing.T) {
 			service := services.NewJWTService("test-secret", tokenStore)
 
 			// Register and create multiple login sessions
-			user, err := service.Register("test@example.com", "password123", []string{"user"})
+			user, err := service.Register("test-user-id", "test@example.com", "password123", []string{"user"})
 			if err != nil {
 				t.Fatalf("failed to register: %v", err)
 			}
@@ -497,7 +503,7 @@ func TestJWTService_GenerateTokenPair(t *testing.T) {
 	service := services.NewJWTService("test-secret", tokenStore)
 
 	// Create a user
-	user, err := service.Register("test@example.com", "password123", []string{"user"})
+	user, err := service.Register("test-user-id", "test@example.com", "password123", []string{"user"})
 	if err != nil {
 		t.Fatalf("failed to register: %v", err)
 	}
