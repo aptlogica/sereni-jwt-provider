@@ -20,7 +20,7 @@ type RefreshMeta struct {
 
 // TokenStore defines the interface for user and token storage
 type TokenStore interface {
-	CreateUser(email, hashedPassword string, roles []string) (*models.User, error)
+	CreateUser(userID, email, hashedPassword string, roles []string) (*models.User, error)
 	GetUserByEmail(email string) (*models.User, error)
 	GetUserByID(userID string) (*models.User, error)
 	StoreRefreshToken(userID, refreshToken string, expiresAt time.Time) error
@@ -52,7 +52,7 @@ func NewTokenStore() TokenStore {
 }
 
 // CreateUser creates a new user
-func (ts *InMemoryTokenStore) CreateUser(email, hashedPassword string, roles []string) (*models.User, error) {
+func (ts *InMemoryTokenStore) CreateUser(userID, email, hashedPassword string, roles []string) (*models.User, error) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -64,8 +64,13 @@ func (ts *InMemoryTokenStore) CreateUser(email, hashedPassword string, roles []s
 		roles = []string{"user"}
 	}
 
+	// Use provided userID instead of generating new UUID
+	if userID == "" {
+		userID = uuid.New().String()
+	}
+
 	user := &models.User{
-		ID:       uuid.New().String(),
+		ID:       userID,
 		Email:    email,
 		Password: hashedPassword,
 		Roles:    roles,

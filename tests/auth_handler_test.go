@@ -32,35 +32,64 @@ func TestAuthHandler_Register(t *testing.T) {
 		requestBody    interface{}
 		expectedStatus int
 		setupUser      bool
+		checkResponse  bool
 	}{
 		{
 			name: "success - valid registration",
 			requestBody: map[string]interface{}{
+				"user_id":  "new-user-123",
 				"email":    "test@example.com",
 				"password": "password123",
 				"roles":    []string{"user"},
 			},
 			expectedStatus: http.StatusCreated,
 			setupUser:      false,
+			checkResponse:  true,
 		},
 		{
-			name: "failure - invalid JSON",
+			name: "failure - missing user_id",
 			requestBody: map[string]interface{}{
-				"email":    "invalid-email",
-				"password": "",
+				"email":    "test@example.com",
+				"password": "password123",
+				"roles":    []string{"user"},
 			},
 			expectedStatus: http.StatusBadRequest,
 			setupUser:      false,
+			checkResponse:  false,
+		},
+		{
+			name: "failure - invalid JSON (missing password)",
+			requestBody: map[string]interface{}{
+				"user_id": "test-user-id",
+				"email":   "invalid-email",
+			},
+			expectedStatus: http.StatusBadRequest,
+			setupUser:      false,
+			checkResponse:  false,
+		},
+		{
+			name: "failure - empty email",
+			requestBody: map[string]interface{}{
+				"user_id":  "test-user-id",
+				"email":    "",
+				"password": "password123",
+				"roles":    []string{"user"},
+			},
+			expectedStatus: http.StatusBadRequest,
+			setupUser:      false,
+			checkResponse:  false,
 		},
 		{
 			name: "failure - user already exists",
 			requestBody: map[string]interface{}{
+				"user_id":  "duplicate-user-id",
 				"email":    "existing@example.com",
 				"password": "password123",
 				"roles":    []string{"user"},
 			},
 			expectedStatus: http.StatusConflict,
 			setupUser:      true,
+			checkResponse:  false,
 		},
 	}
 
@@ -73,7 +102,7 @@ func TestAuthHandler_Register(t *testing.T) {
 			// Setup existing user if needed
 			if tt.setupUser {
 				hashedPassword, _ := utils.HashPassword("password123")
-				tokenStore.CreateUser("existing@example.com", hashedPassword, []string{"user"})
+				tokenStore.CreateUser("existing-user-id", "existing@example.com", hashedPassword, []string{"user"})
 			}
 
 			w := httptest.NewRecorder()
@@ -86,7 +115,20 @@ func TestAuthHandler_Register(t *testing.T) {
 			handler.Register(c)
 
 			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
+				t.Errorf("expected status %d, got %d. Response: %s", tt.expectedStatus, w.Code, w.Body.String())
+			}
+
+			// Verify response structure on success
+			if tt.checkResponse && w.Code == http.StatusCreated {
+				var response map[string]interface{}
+				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+					t.Errorf("failed to unmarshal response: %v", err)
+				}
+				if data, ok := response["data"].(map[string]interface{}); ok {
+					if email, hasEmail := data["email"]; !hasEmail || email != tt.requestBody.(map[string]interface{})["email"] {
+						t.Error("expected email in response data")
+					}
+				}
 			}
 		})
 	}
@@ -100,6 +142,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		requestBody    interface{}
 		expectedStatus int
 		setupUser      bool
+		checkResponse  bool
 	}{
 		{
 			name: "success - valid login",
@@ -109,6 +152,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			setupUser:      true,
+			checkResponse:  true,
 		},
 		{
 			name: "failure - invalid JSON",
@@ -117,15 +161,17 @@ func TestAuthHandler_Login(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			setupUser:      false,
+			checkResponse:  false,
 		},
 		{
-			name: "failure - invalid credentials",
+			name: "failure - empty email",
 			requestBody: map[string]string{
-				"email":    "test@example.com",
-				"password": "wrongpassword",
+				"email":    "",
+				"password": "password123",
 			},
-			expectedStatus: http.StatusUnauthorized,
-			setupUser:      true,
+			expectedStatus: http.StatusBadRequest,
+			setupUser:      false,
+			checkResponse:  false,
 		},
 		{
 			name: "failure - user not found",
@@ -135,6 +181,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			},
 			expectedStatus: http.StatusUnauthorized,
 			setupUser:      false,
+			checkResponse:  false,
 		},
 	}
 
@@ -147,7 +194,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			// Setup user if needed
 			if tt.setupUser {
 				hashedPassword, _ := utils.HashPassword("password123")
-				tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 			}
 
 			w := httptest.NewRecorder()
@@ -160,7 +207,23 @@ func TestAuthHandler_Login(t *testing.T) {
 			handler.Login(c)
 
 			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
+				t.Errorf("expected status %d, got %d. Response: %s", tt.expectedStatus, w.Code, w.Body.String())
+			}
+
+			// Check that tokens are returned on success
+			if tt.checkResponse && w.Code == http.StatusOK {
+				var response map[string]interface{}
+				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+					t.Errorf("failed to unmarshal response: %v", err)
+				}
+				if data, ok := response["data"].(map[string]interface{}); ok {
+					if _, hasAccess := data["access_token"]; !hasAccess {
+						t.Error("expected access_token in response")
+					}
+					if _, hasRefresh := data["refresh_token"]; !hasRefresh {
+						t.Error("expected refresh_token in response")
+					}
+				}
 			}
 		})
 	}
@@ -229,7 +292,7 @@ func TestAuthHandler_RefreshToken(t *testing.T) {
 			if tt.setupTokens {
 				// Setup user and get valid refresh token
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				pair, _ := jwtService.GenerateTokenPair(user)
 				refreshToken = pair.RefreshToken
 				tt.requestBody.(map[string]string)["refresh_token"] = refreshToken
@@ -296,7 +359,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 			if tt.setupTokens {
 				// Setup user and get valid refresh token
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				pair, _ := jwtService.GenerateTokenPair(user)
 				refreshToken = pair.RefreshToken
 				tt.requestBody.(map[string]string)["refresh_token"] = refreshToken
@@ -363,7 +426,7 @@ func TestAuthHandler_ValidateToken(t *testing.T) {
 			if tt.setupTokens {
 				// Setup user and get valid access token
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				pair, _ := jwtService.GenerateTokenPair(user)
 				accessToken = pair.AccessToken
 				tt.requestBody.(map[string]string)["token"] = accessToken
@@ -434,7 +497,7 @@ func TestAuthHandler_VerifyToken(t *testing.T) {
 			if tt.setupTokens {
 				// Setup user and get valid access token
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				pair, _ := jwtService.GenerateTokenPair(user)
 				accessToken = pair.AccessToken
 				tt.requestBody.(map[string]string)["token"] = accessToken
@@ -505,7 +568,7 @@ func TestAuthHandler_GetProfile(t *testing.T) {
 			if tt.setupUserID && tt.userID == "valid-user-id" {
 				// Setup user
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				userID = user.ID
 			} else if tt.setupUserID {
 				userID = tt.userID

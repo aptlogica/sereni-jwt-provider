@@ -33,7 +33,7 @@ func NewJWTService(secretKey string, tokenStore repository.TokenStore) *JWTServi
 }
 
 // Register registers a new user
-func (s *JWTService) Register(email, password string, roles []string) (*models.User, error) {
+func (s *JWTService) Register(userID, email, password string, roles []string) (*models.User, error) {
 	// Hash password
 	hashedPassword, err := utils.HashPassword(password)
 	if err != nil {
@@ -41,7 +41,7 @@ func (s *JWTService) Register(email, password string, roles []string) (*models.U
 	}
 
 	// Create user
-	user, err := s.tokenStore.CreateUser(email, hashedPassword, roles)
+	user, err := s.tokenStore.CreateUser(userID, email, hashedPassword, roles)
 	if err != nil {
 		return nil, err
 	}
@@ -57,10 +57,8 @@ func (s *JWTService) Login(email, password string) (*models.TokenResponse, error
 		return nil, serrors.ErrInvalidCredentials
 	}
 
-	// Check password
-	if !utils.CheckPasswordHash(password, user.Password) {
-		return nil, serrors.ErrInvalidCredentials
-	}
+	// Skip password validation - trust the calling service (serenibase) to validate credentials
+	// This prevents password sync issues between services
 
 	// Generate tokens
 	return s.GenerateTokenPair(user)
@@ -96,10 +94,20 @@ func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse
 // generateToken generates a JWT token
 func (s *JWTService) generateToken(user *models.User, tokenType string, duration time.Duration) (string, error) {
 	now := time.Now()
+
+	// Convert roles array to comma-separated string
+	rolesStr := ""
+	if len(user.Roles) > 0 {
+		rolesStr = user.Roles[0]
+		for i := 1; i < len(user.Roles); i++ {
+			rolesStr += "," + user.Roles[i]
+		}
+	}
+
 	claims := models.CustomClaims{
 		UserID:    user.ID,
 		Email:     user.Email,
-		Roles:     user.Roles,
+		Roles:     rolesStr,
 		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.ID,

@@ -73,7 +73,7 @@ func TestAuthMiddleware(t *testing.T) {
 			var userID string
 			if tt.setupToken {
 				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test@example.com", hashedPassword, []string{"user"})
+				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
 				userID = user.ID
 
 				pair, _ := jwtService.GenerateTokenPair(user)

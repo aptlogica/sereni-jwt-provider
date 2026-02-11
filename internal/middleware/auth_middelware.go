@@ -47,7 +47,13 @@ func AuthMiddleware(jwtService *services.JWTService) gin.HandlerFunc {
 		// Store user info in context
 		c.Set("userID", claims.UserID)
 		c.Set("email", claims.Email)
-		c.Set("roles", claims.Roles)
+
+		// Convert roles string to array
+		var rolesArray []string
+		if claims.Roles != "" {
+			rolesArray = strings.Split(claims.Roles, ",")
+		}
+		c.Set("roles", rolesArray)
 
 		c.Next()
 	}
