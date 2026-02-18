@@ -82,7 +82,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	tokens, err := h.jwtService.Login(req.Email, req.Password)
 	if err != nil {
-		utils.SendError(c, http.StatusUnauthorized, "LOGIN_FAILED", "Invalid email or password")
+		utils.SendError(c, http.StatusUnauthorized, "LOGIN_FAILED", err.Error())
 		return
 	}
 
