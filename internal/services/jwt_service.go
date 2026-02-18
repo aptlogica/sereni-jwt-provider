@@ -5,7 +5,6 @@ import (
 	"auth-service/internal/models"
 	"auth-service/internal/repository"
 	"auth-service/internal/utils"
-	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -131,8 +130,6 @@ func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, er
 		}
 		return []byte(s.secretKey), nil
 	})
-	fmt.Println("token: ", token)
-	fmt.Println("err: ", err)
 	if err != nil {
 		return nil, err
 	}

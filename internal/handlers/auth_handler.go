@@ -5,7 +5,6 @@ import (
 	"auth-service/internal/models"
 	"auth-service/internal/services"
 	"auth-service/internal/utils"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -165,7 +164,6 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 	}
 
 	claims, err := h.jwtService.ValidateToken(req.Token)
-	fmt.Println("claims: ", claims)
 	if err != nil || claims == nil {
 		utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid or expired")
 		return
