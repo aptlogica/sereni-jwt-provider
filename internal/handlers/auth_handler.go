@@ -166,22 +166,29 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 
 	claims, err := h.jwtService.ValidateToken(req.Token)
 	fmt.Println("claims: ", claims)
-	if err != nil {
+	if err != nil || claims == nil {
 		utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid or expired")
 		return
 	}
 
 	// Convert to Swagger-friendly format
-	tokenClaims := models.TokenClaims{
-		UserID:    claims.UserID,
-		Email:     claims.Email,
-		Roles:     claims.Roles,
-		TokenType: claims.TokenType,
-		Issuer:    claims.Issuer,
-		Subject:   claims.Subject,
-		ExpiresAt: claims.ExpiresAt.Unix(),
-		IssuedAt:  claims.IssuedAt.Unix(),
-		NotBefore: claims.NotBefore.Unix(),
+	tokenClaims := models.TokenClaims{}
+	if claims != nil {
+		tokenClaims.UserID = claims.UserID
+		tokenClaims.Email = claims.Email
+		tokenClaims.Roles = claims.Roles
+		tokenClaims.TokenType = claims.TokenType
+		tokenClaims.Issuer = claims.Issuer
+		tokenClaims.Subject = claims.Subject
+		if claims.ExpiresAt != nil {
+			tokenClaims.ExpiresAt = claims.ExpiresAt.Unix()
+		}
+		if claims.IssuedAt != nil {
+			tokenClaims.IssuedAt = claims.IssuedAt.Unix()
+		}
+		if claims.NotBefore != nil {
+			tokenClaims.NotBefore = claims.NotBefore.Unix()
+		}
 	}
 
 	utils.SendSuccess(c, "TOKEN_VALID", "Token is valid", tokenClaims)
