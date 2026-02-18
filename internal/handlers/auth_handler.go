@@ -165,7 +165,7 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 	}
 
 	claims, err := h.jwtService.ValidateToken(req.Token)
-	fmt.Println("err: ", err)
+	fmt.Println("claims: ", claims)
 	if err != nil {
 		utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid or expired")
 		return

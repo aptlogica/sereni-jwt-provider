@@ -5,6 +5,7 @@ import (
 	"auth-service/internal/models"
 	"auth-service/internal/repository"
 	"auth-service/internal/utils"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -130,16 +131,27 @@ func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, er
 		}
 		return []byte(s.secretKey), nil
 	})
-
+	fmt.Println("token: ", token)
+	fmt.Println("err: ", err)
 	if err != nil {
 		return nil, err
 	}
 
-	if claims, ok := token.Claims.(*models.CustomClaims); ok && token.Valid {
-		return claims, nil
+	if !token.Valid {
+		return nil, serrors.ErrInvalidToken
 	}
 
-	return nil, serrors.ErrInvalidToken
+	claims, ok := token.Claims.(*models.CustomClaims)
+	if !ok {
+		return nil, serrors.ErrInvalidToken
+	}
+
+	// Check expiration
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
+		return nil, serrors.ErrInvalidToken // or a more specific error for expired token
+	}
+
+	return claims, nil
 }
 
 // RefreshAccessToken refreshes the access token using a refresh token
