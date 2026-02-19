@@ -3,7 +3,6 @@ package main
 import (
 	"auth-service/internal/config"
 	"auth-service/internal/handlers"
-	"auth-service/internal/middleware"
 	"auth-service/internal/services"
 	"log"
 	"os"
@@ -80,16 +79,9 @@ func main() {
 	auth := router.Group("/auth")
 	{
 		auth.POST("/refresh", authHandler.RefreshToken)
-		auth.POST("/logout", middleware.AuthMiddleware(jwtService), authHandler.Logout)
+		auth.POST("/login", authHandler.Login)
 		auth.POST("/validate-token", authHandler.ValidateToken)
 		auth.POST("/verify-token", authHandler.VerifyToken)
-	}
-
-	// Protected example endpoint
-	protected := router.Group("/api")
-	protected.Use(middleware.AuthMiddleware(jwtService))
-	{
-		protected.GET("/profile", authHandler.GetProfile)
 	}
 
 	// Swagger documentation
