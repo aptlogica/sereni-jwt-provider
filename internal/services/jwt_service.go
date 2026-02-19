@@ -3,8 +3,6 @@ package services
 import (
 	serrors "auth-service/internal/errors"
 	"auth-service/internal/models"
-	"auth-service/internal/repository"
-	"auth-service/internal/utils"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -20,45 +18,24 @@ const (
 
 // JWTService handles JWT operations
 type JWTService struct {
-	secretKey  string
-	tokenStore repository.TokenStore
+	secretKey string
 }
 
 // NewJWTService creates a new JWT service
-func NewJWTService(secretKey string, tokenStore repository.TokenStore) *JWTService {
+func NewJWTService(secretKey string) *JWTService {
 	return &JWTService{
-		secretKey:  secretKey,
-		tokenStore: tokenStore,
+		secretKey: secretKey,
 	}
-}
-
-// Register registers a new user
-func (s *JWTService) Register(userID, email, password string, roles []string) (*models.User, error) {
-	// Hash password
-	hashedPassword, err := utils.HashPassword(password)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create user
-	user, err := s.tokenStore.CreateUser(userID, email, hashedPassword, roles)
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
 }
 
 // Login authenticates a user and returns tokens
-func (s *JWTService) Login(email, password string) (*models.TokenResponse, error) {
-	// Get user
-	user, err := s.tokenStore.GetUserByEmail(email)
-	if err != nil {
-		return nil, serrors.ErrInvalidCredentials
+func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse, error) {
+	user := &models.User{
+		ID:       loginReq.ID,
+		Email:    loginReq.Email,
+		Password: loginReq.Password,
+		Roles:    loginReq.Roles,
 	}
-
-	// Skip password validation - trust the calling service (serenibase) to validate credentials
-	// This prevents password sync issues between services
 
 	// Generate tokens
 	return s.GenerateTokenPair(user)
@@ -78,11 +55,7 @@ func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse
 		return nil, err
 	}
 
-	// Store refresh token (store expiry metadata)
-	if err := s.tokenStore.StoreRefreshToken(user.ID, refreshToken, time.Now().Add(RefreshTokenDuration)); err != nil {
-		return nil, err
-	}
-
+	// Store refresh token for revocation
 	return &models.TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -130,6 +103,7 @@ func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, er
 		}
 		return []byte(s.secretKey), nil
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +126,7 @@ func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, er
 }
 
 // RefreshAccessToken refreshes the access token using a refresh token
-func (s *JWTService) RefreshAccessToken(refreshToken string) (*models.TokenResponse, error) {
+func (s *JWTService) RefreshAccessToken(refreshToken string, user *models.User) (*models.TokenResponse, error) {
 	// Validate refresh token
 	claims, err := s.ValidateToken(refreshToken)
 	if err != nil {
@@ -164,49 +138,6 @@ func (s *JWTService) RefreshAccessToken(refreshToken string) (*models.TokenRespo
 		return nil, serrors.ErrNotRefreshToken
 	}
 
-	// Validate refresh token in store
-	userID, err := s.tokenStore.ValidateRefreshToken(refreshToken)
-	if err != nil {
-		return nil, err
-	}
-
-	if userID != claims.UserID {
-		return nil, serrors.ErrTokenUserMismatch
-	}
-
-	// Get user
-	user, err := s.tokenStore.GetUserByID(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Revoke old refresh token
-	s.tokenStore.RevokeRefreshToken(refreshToken)
-
 	// Generate new token pair (token rotation)
 	return s.GenerateTokenPair(user)
-}
-
-// Logout revokes the refresh token
-func (s *JWTService) Logout(refreshToken string) error {
-	return s.tokenStore.RevokeRefreshToken(refreshToken)
-}
-
-// LogoutAll revokes all refresh tokens for a user
-func (s *JWTService) LogoutAll(userID string) error {
-	return s.tokenStore.RevokeAllUserTokens(userID)
-}
-
-// GetUserProfile retrieves user profile information
-func (s *JWTService) GetUserProfile(userID string) (*models.UserProfile, error) {
-	user, err := s.tokenStore.GetUserByID(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &models.UserProfile{
-		ID:    user.ID,
-		Email: user.Email,
-		Roles: user.Roles,
-	}, nil
 }

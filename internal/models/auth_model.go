@@ -10,23 +10,21 @@ type User struct {
 	Roles    []string `json:"roles"`
 }
 
-// RegisterRequest represents the registration request payload
-type RegisterRequest struct {
-	UserID   string   `json:"user_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Email    string   `json:"email" binding:"required,email" example:"user@example.com"`
-	Password string   `json:"password" binding:"required,min=8" example:"SecurePass123!"`
-	Roles    []string `json:"roles" example:"user"`
-}
-
 // LoginRequest represents the login request payload
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email" example:"user@example.com"`
-	Password string `json:"password" binding:"required" example:"SecurePass123!"`
+	ID       string   `json:"id"`
+	Email    string   `json:"email"`
+	Password string   `json:"-"` // Never expose password in JSON
+	Roles    []string `json:"roles"`
 }
 
 // RefreshTokenRequest represents the refresh token request payload
 type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	RefreshToken string   `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	ID           string   `json:"id"`
+	Email        string   `json:"email"`
+	Password     string   `json:"-"` // Never expose password in JSON
+	Roles        []string `json:"roles"`
 }
 
 // VerifyTokenRequest represents the token verification request payload
@@ -40,13 +38,6 @@ type TokenResponse struct {
 	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 	TokenType    string `json:"token_type" example:"Bearer"`
 	ExpiresIn    int64  `json:"expires_in" example:"900"`
-}
-
-// UserProfile represents user profile information
-type UserProfile struct {
-	ID    string   `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Email string   `json:"email" example:"user@example.com"`
-	Roles []string `json:"roles" example:"user,admin"`
 }
 
 // SuccessResponse represents a successful API response
