@@ -3,8 +3,6 @@ package main
 import (
 	"auth-service/internal/config"
 	"auth-service/internal/handlers"
-	"auth-service/internal/middleware"
-	"auth-service/internal/repository"
 	"auth-service/internal/services"
 	"log"
 	"os"
@@ -56,10 +54,7 @@ func main() {
 	}
 
 	// Initialize dependencies
-	tokenStore := repository.NewTokenStore()
-	tokenStore.StartCleanupRoutine()
-	defer tokenStore.Close()
-	jwtService := services.NewJWTService(cfg.JWTSecret, tokenStore)
+	jwtService := services.NewJWTService(cfg.JWTSecret)
 	authHandler := handlers.NewAuthHandler(jwtService)
 
 	// Setup Gin router
@@ -83,19 +78,10 @@ func main() {
 	// Auth endpoints
 	auth := router.Group("/auth")
 	{
-		auth.POST("/register", authHandler.Register)
-		auth.POST("/login", authHandler.Login)
 		auth.POST("/refresh", authHandler.RefreshToken)
-		auth.POST("/logout", middleware.AuthMiddleware(jwtService), authHandler.Logout)
+		auth.POST("/login", authHandler.Login)
 		auth.POST("/validate-token", authHandler.ValidateToken)
 		auth.POST("/verify-token", authHandler.VerifyToken)
-	}
-
-	// Protected example endpoint
-	protected := router.Group("/api")
-	protected.Use(middleware.AuthMiddleware(jwtService))
-	{
-		protected.GET("/profile", authHandler.GetProfile)
 	}
 
 	// Swagger documentation

@@ -2,10 +2,8 @@ package tests
 
 import (
 	"auth-service/internal/middleware"
-	middlewarePkg "auth-service/internal/middleware"
-	"auth-service/internal/repository"
+	"auth-service/internal/models"
 	"auth-service/internal/services"
-	"auth-service/internal/utils"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,7 +27,7 @@ func TestAuthMiddleware(t *testing.T) {
 			authHeader:     "Bearer valid-token",
 			expectedStatus: http.StatusOK,
 			setupToken:     true,
-			tokenType:      "access",
+			tokenType:      services.TokenTypeAccess,
 			expectAbort:    false,
 		},
 		{
@@ -58,82 +56,78 @@ func TestAuthMiddleware(t *testing.T) {
 			authHeader:     "Bearer refresh-token",
 			expectedStatus: http.StatusUnauthorized,
 			setupToken:     true,
-			tokenType:      "refresh",
+			tokenType:      services.TokenTypeRefresh,
 			expectAbort:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tokenStore := repository.NewTokenStore()
-			jwtService := services.NewJWTService("test-secret", tokenStore)
+			jwtService := services.NewJWTService("test-secret")
 
-			// Setup user and token if needed
 			var token string
-			var userID string
-			if tt.setupToken {
-				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
-				userID = user.ID
+			user := &models.User{
+				ID:       "test-user-id",
+				Email:    "test@example.com",
+				Password: "password123",
+				Roles:    []string{"user", "admin"},
+			}
 
-				pair, _ := jwtService.GenerateTokenPair(user)
-				if tt.tokenType == "refresh" {
+			if tt.setupToken {
+				pair, err := jwtService.GenerateTokenPair(user)
+				if err != nil {
+					t.Fatalf("failed generating token pair: %v", err)
+				}
+				if tt.tokenType == services.TokenTypeRefresh {
 					token = pair.RefreshToken
 				} else {
 					token = pair.AccessToken
 				}
 			}
 
-			// Create test context
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest("GET", "/", nil)
 
-			// Set auth header
 			if tt.authHeader != "" {
 				if tt.authHeader == "Bearer valid-token" && tt.setupToken {
-					c.Request = httptest.NewRequest("GET", "/", nil)
+					c.Request.Header.Set("Authorization", "Bearer "+token)
+				} else if tt.authHeader == "Bearer refresh-token" && tt.setupToken {
 					c.Request.Header.Set("Authorization", "Bearer "+token)
 				} else {
-					c.Request = httptest.NewRequest("GET", "/", nil)
 					c.Request.Header.Set("Authorization", tt.authHeader)
 				}
-			} else {
-				c.Request = httptest.NewRequest("GET", "/", nil)
 			}
 
-			// Create middleware
-			middleware := middleware.AuthMiddleware(jwtService)
+			handler := middleware.AuthMiddleware(jwtService)
+			handler(c)
 
-			// Call middleware
-			middleware(c)
-
-			// Check status
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
 			}
 
-			// Check if aborted
 			if tt.expectAbort && !c.IsAborted() {
 				t.Error("expected request to be aborted")
 			}
 
-			// Check context values for success case
 			if tt.name == "success - valid access token" && !c.IsAborted() {
 				ctxUserID, exists := c.Get("userID")
-				if !exists || ctxUserID != userID {
-					t.Errorf("expected userID %s in context, got %v", userID, ctxUserID)
+				if !exists || ctxUserID != user.ID {
+					t.Errorf("expected userID %s in context, got %v", user.ID, ctxUserID)
 				}
+
 				email, exists := c.Get("email")
-				if !exists || email != "test@example.com" {
-					t.Error("expected email in context")
+				if !exists || email != user.Email {
+					t.Errorf("expected email %s in context, got %v", user.Email, email)
 				}
+
 				roles, exists := c.Get("roles")
 				if !exists {
 					t.Error("expected roles in context")
 				}
 				userRoles, ok := roles.([]string)
-				if !ok || len(userRoles) != 1 || userRoles[0] != "user" {
-					t.Error("expected correct roles in context")
+				if !ok || len(userRoles) != 2 || userRoles[0] != "user" || userRoles[1] != "admin" {
+					t.Errorf("expected [user admin] roles in context, got %v", roles)
 				}
 			}
 		})
@@ -182,28 +176,21 @@ func TestRequireRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create test context
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("GET", "/", nil)
 
-			// Set roles in context if provided
 			if tt.contextRoles != nil {
 				c.Set("roles", tt.contextRoles)
 			}
 
-			// Create middleware
-			middleware := middlewarePkg.RequireRole(tt.requiredRole)
+			handler := middleware.RequireRole(tt.requiredRole)
+			handler(c)
 
-			// Call middleware
-			middleware(c)
-
-			// Check status
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
 			}
 
-			// Check if aborted
 			if tt.expectAbort && !c.IsAborted() {
 				t.Error("expected request to be aborted")
 			}
