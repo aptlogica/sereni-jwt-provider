@@ -9,22 +9,24 @@ import (
 )
 
 const (
-	AccessTokenDuration  = 15 * time.Minute
-	RefreshTokenDuration = 7 * 24 * time.Hour
-	TokenTypeAccess      = "access"
-	TokenTypeRefresh     = "refresh"
-	Issuer               = "auth-service"
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+	Issuer           = "auth-service"
 )
 
 // JWTService handles JWT operations
 type JWTService struct {
-	secretKey string
+	secretKey            string
+	accessTokenDuration  time.Duration
+	refreshTokenDuration time.Duration
 }
 
 // NewJWTService creates a new JWT service
-func NewJWTService(secretKey string) *JWTService {
+func NewJWTService(secretKey string, accessTokenDuration, refreshTokenDuration int64) *JWTService {
 	return &JWTService{
-		secretKey: secretKey,
+		secretKey:            secretKey,
+		accessTokenDuration:  time.Duration(accessTokenDuration) * time.Second,
+		refreshTokenDuration: time.Duration(refreshTokenDuration) * time.Second,
 	}
 }
 
@@ -44,13 +46,13 @@ func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse
 // GenerateTokenPair generates access and refresh tokens
 func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse, error) {
 	// Generate access token
-	accessToken, err := s.generateToken(user, TokenTypeAccess, AccessTokenDuration)
+	accessToken, err := s.generateToken(user, TokenTypeAccess, s.accessTokenDuration)
 	if err != nil {
 		return nil, err
 	}
 
 	// Generate refresh token
-	refreshToken, err := s.generateToken(user, TokenTypeRefresh, RefreshTokenDuration)
+	refreshToken, err := s.generateToken(user, TokenTypeRefresh, s.refreshTokenDuration)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +62,7 @@ func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    int64(AccessTokenDuration.Seconds()),
+		ExpiresIn:    int64(s.accessTokenDuration.Seconds()),
 	}, nil
 }
 

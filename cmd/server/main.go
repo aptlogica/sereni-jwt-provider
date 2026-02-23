@@ -54,7 +54,7 @@ func main() {
 	}
 
 	// Initialize dependencies
-	jwtService := services.NewJWTService(cfg.JWTSecret)
+	jwtService := services.NewJWTService(cfg.JWTSecret, cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 	authHandler := handlers.NewAuthHandler(jwtService)
 
 	// Setup Gin router

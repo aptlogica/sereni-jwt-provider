@@ -4,6 +4,7 @@ import (
 	"auth-service/internal/models"
 	"auth-service/internal/services"
 	"auth-service/internal/utils"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -77,6 +78,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 	tokens, err := h.jwtService.RefreshAccessToken(req.RefreshToken, user)
 	if err != nil {
+		fmt.Println("err: ", err)
 		utils.SendError(c, http.StatusUnauthorized, "REFRESH_FAILED", "Invalid or expired refresh token")
 		return
 	}
