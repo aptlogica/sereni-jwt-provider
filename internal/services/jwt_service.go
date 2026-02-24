@@ -72,6 +72,8 @@ func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse
 // generateToken generates a JWT token
 func (s *JWTService) generateToken(user *models.User, tokenType string, duration time.Duration) (string, error) {
 	now := time.Now()
+	exp := now.Add(duration)
+	fmt.Printf("[DEBUG] generateToken: now=%v, duration=%v, exp=%v (seconds diff=%v)\n", now.Unix(), duration.Seconds(), exp.Unix(), exp.Unix()-now.Unix())
 
 	// Convert roles array to comma-separated string
 	rolesStr := ""
@@ -89,7 +91,7 @@ func (s *JWTService) generateToken(user *models.User, tokenType string, duration
 		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.ID,
-			ExpiresAt: jwt.NewNumericDate(now.Add(duration)),
+			ExpiresAt: jwt.NewNumericDate(exp),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    Issuer,
