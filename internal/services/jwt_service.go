@@ -105,7 +105,7 @@ func (s *JWTService) generateToken(user *models.User, tokenType string, duration
 }
 
 // ValidateToken validates and parses a JWT token
-func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, error) {
+func (s *JWTService) ValidateToken(tokenString string, checkExpiry bool) (*models.CustomClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &models.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, serrors.ErrUnexpectedSigningMethod
@@ -134,10 +134,11 @@ func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, er
 	return claims, nil
 }
 
+
 // RefreshAccessToken refreshes the access token using a refresh token
 func (s *JWTService) RefreshAccessToken(refreshToken string) (*models.TokenResponse, error) {
 	// Validate refresh token
-	claims, err := s.ValidateToken(refreshToken)
+	claims, err := s.ValidateToken(refreshToken, false)
 	if err != nil {
 		return nil, serrors.ErrInvalidRefreshTokenSvc
 	}

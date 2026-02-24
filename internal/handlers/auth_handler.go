@@ -98,7 +98,7 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 		return
 	}
 
-	claims, err := h.jwtService.ValidateToken(req.Token)
+	claims, err := h.jwtService.ValidateToken(req.Token, true)
 	fmt.Printf("[DEBUG] ValidateToken: token=%s, claims=%+v, err=%v\n", req.Token, claims, err)
 	if err != nil || claims == nil {
 		if err == serrors.ErrTokenExpire {
@@ -153,7 +153,7 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 		return
 	}
 
-	_, err := h.jwtService.ValidateToken(req.Token)
+	_, err := h.jwtService.ValidateToken(req.Token, true)
 	isValid := err == nil
 
 	result := map[string]bool{
