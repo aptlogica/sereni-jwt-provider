@@ -14,7 +14,6 @@ type User struct {
 type LoginRequest struct {
 	ID       string   `json:"id"`
 	Email    string   `json:"email"`
-	Password string   `json:"-"` // Never expose password in JSON
 	Roles    []string `json:"roles"`
 }
 

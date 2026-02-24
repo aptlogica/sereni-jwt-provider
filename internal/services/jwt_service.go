@@ -38,7 +38,6 @@ func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse
 	user := &models.User{
 		ID:       loginReq.ID,
 		Email:    loginReq.Email,
-		Password: loginReq.Password,
 		Roles:    loginReq.Roles,
 	}
 
