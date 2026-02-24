@@ -126,14 +126,12 @@ func (s *JWTService) ValidateToken(tokenString string, checkExpiry bool) (*model
 		return nil, serrors.ErrInvalidToken
 	}
 
-	// Check expiration
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
-		return nil, serrors.ErrTokenExpire // or a more specific error for expired token
+	if claims.ExpiresAt != nil && time.Now().After(claims.ExpiresAt.Time) {
+		return nil, serrors.ErrTokenExpire
 	}
 
 	return claims, nil
 }
-
 
 // RefreshAccessToken refreshes the access token using a refresh token
 func (s *JWTService) RefreshAccessToken(refreshToken string) (*models.TokenResponse, error) {
