@@ -3,6 +3,7 @@ package services
 import (
 	serrors "auth-service/internal/errors"
 	"auth-service/internal/models"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -23,11 +24,13 @@ type JWTService struct {
 
 // NewJWTService creates a new JWT service
 func NewJWTService(secretKey string, accessTokenDuration, refreshTokenDuration int64) *JWTService {
-	return &JWTService{
+	svc := &JWTService{
 		secretKey:            secretKey,
 		accessTokenDuration:  time.Duration(accessTokenDuration) * time.Second,
 		refreshTokenDuration: time.Duration(refreshTokenDuration) * time.Second,
 	}
+	fmt.Printf("[DEBUG] JWTService: accessTokenDuration=%v seconds, refreshTokenDuration=%v seconds\n", svc.accessTokenDuration.Seconds(), svc.refreshTokenDuration.Seconds())
+	return svc
 }
 
 // Login authenticates a user and returns tokens
