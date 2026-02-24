@@ -86,10 +86,11 @@ func (s *JWTService) generateToken(user *models.User, tokenType string, duration
 	}
 
 	claims := models.CustomClaims{
-		UserID:    user.ID,
-		Email:     user.Email,
-		Roles:     rolesStr,
-		TokenType: tokenType,
+		UserID:         user.ID,
+		Email:          user.Email,
+		Roles:          rolesStr,
+		TokenType:      tokenType,
+		EMAIL_VERIFIED: user.EMAIL_VERIFIED,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.ID,
 			ExpiresAt: jwt.NewNumericDate(exp),
