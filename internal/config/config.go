@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -55,6 +56,8 @@ func LoadConfig() *Config {
 	} else {
 		cfg.RefreshTokenDuration = 604800
 	}
+
+	fmt.Printf("Config loaded: %+v\n", cfg)
 
 	if cfg.ServerPort == "" {
 		cfg.ServerPort = "8081"
