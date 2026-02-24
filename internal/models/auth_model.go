@@ -4,26 +4,27 @@ import "github.com/golang-jwt/jwt/v5"
 
 // User represents a user in the system
 type User struct {
-	ID       string   `json:"id"`
-	Email    string   `json:"email"`
-	Password string   `json:"-"` // Never expose password in JSON
-	Roles    []string `json:"roles"`
+	ID             string   `json:"id"`
+	Email          string   `json:"email"`
+	EMAIL_VERIFIED bool     `json:"email_verified"`
+	Roles          []string `json:"roles"`
 }
 
 // LoginRequest represents the login request payload
 type LoginRequest struct {
-	ID       string   `json:"id"`
-	Email    string   `json:"email"`
-	Roles    string `json:"roles"`
+	ID             string   `json:"id"`
+	Email          string   `json:"email"`
+	EMAIL_VERIFIED bool     `json:"email_verified"`
+	Roles          []string `json:"roles"`
 }
 
 // RefreshTokenRequest represents the refresh token request payload
 type RefreshTokenRequest struct {
-	RefreshToken string   `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-	ID           string   `json:"id"`
-	Email        string   `json:"email"`
-	Password     string   `json:"-"` // Never expose password in JSON
-	Roles        string `json:"roles"`
+	RefreshToken   string   `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	ID             string   `json:"id"`
+	Email          string   `json:"email"`
+	EMAIL_VERIFIED bool     `json:"email_verified"`
+	Roles          []string `json:"roles"`
 }
 
 // VerifyTokenRequest represents the token verification request payload
