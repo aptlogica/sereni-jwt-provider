@@ -36,9 +36,9 @@ func NewJWTService(secretKey string, accessTokenDuration, refreshTokenDuration i
 // Login authenticates a user and returns tokens
 func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse, error) {
 	user := &models.User{
-		ID:       loginReq.ID,
-		Email:    loginReq.Email,
-		Roles:    loginReq.Roles,
+		ID:    loginReq.ID,
+		Email: loginReq.Email,
+		Roles: loginReq.Roles,
 	}
 
 	// Generate tokens
@@ -126,7 +126,7 @@ func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, er
 
 	// Check expiration
 	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
-		return nil, serrors.ErrInvalidToken // or a more specific error for expired token
+		return nil, serrors.ErrTokenExpire // or a more specific error for expired token
 	}
 
 	return claims, nil
