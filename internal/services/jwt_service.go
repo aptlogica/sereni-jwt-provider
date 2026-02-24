@@ -48,7 +48,7 @@ func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse
 
 // GenerateTokenPair generates access and refresh tokens
 func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse, error) {
-	fmt.Printf("[DEBUG] GenerateTokenPair: userID=%s, email=%s, roles=%v\n", user.ID, user.Email, user.Roles)
+	fmt.Printf("[DEBUG] GenerateTokenPair: userID=%s, email=%s, roles=%v\n", user.ID, user.Email, user.Roles, user.EMAIL_VERIFIED)
 	// Generate access token
 	accessToken, err := s.generateToken(user, TokenTypeAccess, s.accessTokenDuration)
 	if err != nil {
