@@ -36,9 +36,10 @@ func NewJWTService(secretKey string, accessTokenDuration, refreshTokenDuration i
 // Login authenticates a user and returns tokens
 func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse, error) {
 	user := &models.User{
-		ID:    loginReq.ID,
-		Email: loginReq.Email,
-		Roles: loginReq.Roles,
+		ID:             loginReq.ID,
+		Email:          loginReq.Email,
+		Roles:          loginReq.Roles,
+		EMAIL_VERIFIED: loginReq.EMAIL_VERIFIED,
 	}
 
 	// Generate tokens
@@ -133,7 +134,7 @@ func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, er
 }
 
 // RefreshAccessToken refreshes the access token using a refresh token
-func (s *JWTService) RefreshAccessToken(refreshToken string, user *models.User) (*models.TokenResponse, error) {
+func (s *JWTService) RefreshAccessToken(refreshToken string) (*models.TokenResponse, error) {
 	// Validate refresh token
 	claims, err := s.ValidateToken(refreshToken)
 	if err != nil {
@@ -143,6 +144,13 @@ func (s *JWTService) RefreshAccessToken(refreshToken string, user *models.User) 
 	// Check token type
 	if claims.TokenType != TokenTypeRefresh {
 		return nil, serrors.ErrNotRefreshToken
+	}
+
+	user := &models.User{
+		ID:             claims.UserID,
+		Email:          claims.Email,
+		EMAIL_VERIFIED: claims.EMAIL_VERIFIED,
+		Roles:          []string{},
 	}
 
 	// Generate new token pair (token rotation)
