@@ -9,6 +9,7 @@ var (
 	ErrInvalidRefreshTokenSvc  = errors.New("invalid refresh token")
 	ErrNotRefreshToken         = errors.New("token is not a refresh token")
 	ErrTokenUserMismatch       = errors.New("token user mismatch")
+	ErrTokenExpire             = errors.New("token has expired")
 
 	// Repository level errors
 	ErrUserExists          = errors.New("user already exists")

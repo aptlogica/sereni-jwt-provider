@@ -3,38 +3,43 @@ package services
 import (
 	serrors "auth-service/internal/errors"
 	"auth-service/internal/models"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
-	AccessTokenDuration  = 15 * time.Minute
-	RefreshTokenDuration = 7 * 24 * time.Hour
-	TokenTypeAccess      = "access"
-	TokenTypeRefresh     = "refresh"
-	Issuer               = "auth-service"
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+	Issuer           = "auth-service"
 )
 
 // JWTService handles JWT operations
 type JWTService struct {
-	secretKey string
+	secretKey            string
+	accessTokenDuration  time.Duration
+	refreshTokenDuration time.Duration
 }
 
 // NewJWTService creates a new JWT service
-func NewJWTService(secretKey string) *JWTService {
-	return &JWTService{
-		secretKey: secretKey,
+func NewJWTService(secretKey string, accessTokenDuration, refreshTokenDuration int64) *JWTService {
+	svc := &JWTService{
+		secretKey:            secretKey,
+		accessTokenDuration:  time.Duration(accessTokenDuration) * time.Second,
+		refreshTokenDuration: time.Duration(refreshTokenDuration) * time.Second,
 	}
+	fmt.Printf("[DEBUG] JWTService: accessTokenDuration=%v seconds, refreshTokenDuration=%v seconds\n", svc.accessTokenDuration.Seconds(), svc.refreshTokenDuration.Seconds())
+	return svc
 }
 
 // Login authenticates a user and returns tokens
 func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse, error) {
 	user := &models.User{
-		ID:       loginReq.ID,
-		Email:    loginReq.Email,
-		Password: loginReq.Password,
-		Roles:    loginReq.Roles,
+		ID:             loginReq.ID,
+		Email:          loginReq.Email,
+		Roles:          loginReq.Roles,
+		EMAIL_VERIFIED: loginReq.EMAIL_VERIFIED,
 	}
 
 	// Generate tokens
@@ -43,14 +48,15 @@ func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse
 
 // GenerateTokenPair generates access and refresh tokens
 func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse, error) {
+	fmt.Printf("[DEBUG] GenerateTokenPair: userID=%s, email=%s, roles=%v\n, email_verified=%v\n", user.ID, user.Email, user.Roles, user.EMAIL_VERIFIED)
 	// Generate access token
-	accessToken, err := s.generateToken(user, TokenTypeAccess, AccessTokenDuration)
+	accessToken, err := s.generateToken(user, TokenTypeAccess, s.accessTokenDuration)
 	if err != nil {
 		return nil, err
 	}
 
 	// Generate refresh token
-	refreshToken, err := s.generateToken(user, TokenTypeRefresh, RefreshTokenDuration)
+	refreshToken, err := s.generateToken(user, TokenTypeRefresh, s.refreshTokenDuration)
 	if err != nil {
 		return nil, err
 	}
@@ -60,13 +66,15 @@ func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    int64(AccessTokenDuration.Seconds()),
+		ExpiresIn:    int64(s.accessTokenDuration.Seconds()),
 	}, nil
 }
 
 // generateToken generates a JWT token
 func (s *JWTService) generateToken(user *models.User, tokenType string, duration time.Duration) (string, error) {
 	now := time.Now()
+	exp := now.Add(duration)
+	fmt.Printf("[DEBUG] generateToken: now=%v, duration=%v, exp=%v (seconds diff=%v)\n", now.Unix(), duration.Seconds(), exp.Unix(), exp.Unix()-now.Unix())
 
 	// Convert roles array to comma-separated string
 	rolesStr := ""
@@ -78,13 +86,14 @@ func (s *JWTService) generateToken(user *models.User, tokenType string, duration
 	}
 
 	claims := models.CustomClaims{
-		UserID:    user.ID,
-		Email:     user.Email,
-		Roles:     rolesStr,
-		TokenType: tokenType,
+		UserID:         user.ID,
+		Email:          user.Email,
+		Roles:          rolesStr,
+		TokenType:      tokenType,
+		EMAIL_VERIFIED: user.EMAIL_VERIFIED,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.ID,
-			ExpiresAt: jwt.NewNumericDate(now.Add(duration)),
+			ExpiresAt: jwt.NewNumericDate(exp),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    Issuer,
@@ -96,7 +105,7 @@ func (s *JWTService) generateToken(user *models.User, tokenType string, duration
 }
 
 // ValidateToken validates and parses a JWT token
-func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, error) {
+func (s *JWTService) ValidateToken(tokenString string, checkExpiry bool) (*models.CustomClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &models.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, serrors.ErrUnexpectedSigningMethod
@@ -117,18 +126,17 @@ func (s *JWTService) ValidateToken(tokenString string) (*models.CustomClaims, er
 		return nil, serrors.ErrInvalidToken
 	}
 
-	// Check expiration
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
-		return nil, serrors.ErrInvalidToken // or a more specific error for expired token
+	if claims.ExpiresAt != nil && time.Now().After(claims.ExpiresAt.Time) {
+		return nil, serrors.ErrTokenExpire
 	}
 
 	return claims, nil
 }
 
 // RefreshAccessToken refreshes the access token using a refresh token
-func (s *JWTService) RefreshAccessToken(refreshToken string, user *models.User) (*models.TokenResponse, error) {
+func (s *JWTService) RefreshAccessToken(refreshToken string) (*models.TokenResponse, error) {
 	// Validate refresh token
-	claims, err := s.ValidateToken(refreshToken)
+	claims, err := s.ValidateToken(refreshToken, false)
 	if err != nil {
 		return nil, serrors.ErrInvalidRefreshTokenSvc
 	}
@@ -136,6 +144,13 @@ func (s *JWTService) RefreshAccessToken(refreshToken string, user *models.User) 
 	// Check token type
 	if claims.TokenType != TokenTypeRefresh {
 		return nil, serrors.ErrNotRefreshToken
+	}
+
+	user := &models.User{
+		ID:             claims.UserID,
+		Email:          claims.Email,
+		EMAIL_VERIFIED: claims.EMAIL_VERIFIED,
+		Roles:          []string{},
 	}
 
 	// Generate new token pair (token rotation)

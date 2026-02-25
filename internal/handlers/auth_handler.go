@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	serrors "auth-service/internal/errors"
 	"auth-service/internal/models"
 	"auth-service/internal/services"
 	"auth-service/internal/utils"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -68,15 +70,9 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	user := &models.User{
-		ID:       req.ID,
-		Email:    req.Email,
-		Password: req.Password,
-		Roles:    req.Roles,
-	}
-
-	tokens, err := h.jwtService.RefreshAccessToken(req.RefreshToken, user)
+	tokens, err := h.jwtService.RefreshAccessToken(req.RefreshToken)
 	if err != nil {
+		fmt.Println("err: ", err)
 		utils.SendError(c, http.StatusUnauthorized, "REFRESH_FAILED", "Invalid or expired refresh token")
 		return
 	}
@@ -102,8 +98,17 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 		return
 	}
 
-	claims, err := h.jwtService.ValidateToken(req.Token)
+	claims, err := h.jwtService.ValidateToken(req.Token, true)
+	fmt.Printf("[DEBUG] ValidateToken: token=%s, claims=%+v, err=%v\n", req.Token, claims, err)
 	if err != nil || claims == nil {
+		if err == serrors.ErrTokenExpire {
+			utils.SendError(c, http.StatusUnauthorized, "TOKEN_EXPIRED", "Token has expired")
+			return
+		}
+		if err == serrors.ErrInvalidToken {
+			utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid")
+			return
+		}
 		utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid or expired")
 		return
 	}
@@ -148,7 +153,7 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 		return
 	}
 
-	_, err := h.jwtService.ValidateToken(req.Token)
+	_, err := h.jwtService.ValidateToken(req.Token, true)
 	isValid := err == nil
 
 	result := map[string]bool{
