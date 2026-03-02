@@ -2,9 +2,8 @@ package tests
 
 import (
 	"auth-service/internal/handlers"
-	"auth-service/internal/repository"
+	"auth-service/internal/models"
 	"auth-service/internal/services"
-	"auth-service/internal/utils"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -14,579 +13,216 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestNewAuthHandler(t *testing.T) {
-	tokenStore := repository.NewTokenStore()
-	jwtService := services.NewJWTService("test-secret", tokenStore)
-	handler := handlers.NewAuthHandler(jwtService)
-
-	if handler == nil {
-		t.Errorf("expected handler to be created")
-	}
+func newTestHandler() *handlers.AuthHandler {
+	jwtService := services.NewJWTService("test-secret", 900, 604800)
+	return handlers.NewAuthHandler(jwtService)
 }
 
-func TestAuthHandler_Register(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+func performJSONRequest(t *testing.T, method, path string, body interface{}, h gin.HandlerFunc) *httptest.ResponseRecorder {
+	t.Helper()
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
 
-	tests := []struct {
-		name           string
-		requestBody    interface{}
-		expectedStatus int
-		setupUser      bool
-		checkResponse  bool
-	}{
-		{
-			name: "success - valid registration",
-			requestBody: map[string]interface{}{
-				"user_id":  "new-user-123",
-				"email":    "test@example.com",
-				"password": "password123",
-				"roles":    []string{"user"},
-			},
-			expectedStatus: http.StatusCreated,
-			setupUser:      false,
-			checkResponse:  true,
-		},
-		{
-			name: "failure - missing user_id",
-			requestBody: map[string]interface{}{
-				"email":    "test@example.com",
-				"password": "password123",
-				"roles":    []string{"user"},
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupUser:      false,
-			checkResponse:  false,
-		},
-		{
-			name: "failure - invalid JSON (missing password)",
-			requestBody: map[string]interface{}{
-				"user_id": "test-user-id",
-				"email":   "invalid-email",
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupUser:      false,
-			checkResponse:  false,
-		},
-		{
-			name: "failure - empty email",
-			requestBody: map[string]interface{}{
-				"user_id":  "test-user-id",
-				"email":    "",
-				"password": "password123",
-				"roles":    []string{"user"},
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupUser:      false,
-			checkResponse:  false,
-		},
-		{
-			name: "failure - user already exists",
-			requestBody: map[string]interface{}{
-				"user_id":  "duplicate-user-id",
-				"email":    "existing@example.com",
-				"password": "password123",
-				"roles":    []string{"user"},
-			},
-			expectedStatus: http.StatusConflict,
-			setupUser:      true,
-			checkResponse:  false,
-		},
+	var reqBody []byte
+	var err error
+	if body != nil {
+		reqBody, err = json.Marshal(body)
+		if err != nil {
+			t.Fatalf("failed to marshal request body: %v", err)
+		}
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tokenStore := repository.NewTokenStore()
-			jwtService := services.NewJWTService("test-secret", tokenStore)
-			handler := handlers.NewAuthHandler(jwtService)
+	c.Request = httptest.NewRequest(method, path, bytes.NewBuffer(reqBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+	h(c)
+	return w
+}
 
-			// Setup existing user if needed
-			if tt.setupUser {
-				hashedPassword, _ := utils.HashPassword("password123")
-				tokenStore.CreateUser("existing-user-id", "existing@example.com", hashedPassword, []string{"user"})
-			}
+func decodeSuccessResponse(t *testing.T, w *httptest.ResponseRecorder) models.SuccessResponse {
+	t.Helper()
+	var resp models.SuccessResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode success response: %v", err)
+	}
+	return resp
+}
 
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-
-			body, _ := json.Marshal(tt.requestBody)
-			c.Request = httptest.NewRequest("POST", "/register", bytes.NewBuffer(body))
-			c.Request.Header.Set("Content-Type", "application/json")
-
-			handler.Register(c)
-
-			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d. Response: %s", tt.expectedStatus, w.Code, w.Body.String())
-			}
-
-			// Verify response structure on success
-			if tt.checkResponse && w.Code == http.StatusCreated {
-				var response map[string]interface{}
-				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-					t.Errorf("failed to unmarshal response: %v", err)
-				}
-				if data, ok := response["data"].(map[string]interface{}); ok {
-					if email, hasEmail := data["email"]; !hasEmail || email != tt.requestBody.(map[string]interface{})["email"] {
-						t.Error("expected email in response data")
-					}
-				}
-			}
-		})
+func TestNewAuthHandler(t *testing.T) {
+	handler := newTestHandler()
+	if handler == nil {
+		t.Fatal("expected handler to be created")
 	}
 }
 
 func TestAuthHandler_Login(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
 
-	tests := []struct {
-		name           string
-		requestBody    interface{}
-		expectedStatus int
-		setupUser      bool
-		checkResponse  bool
-	}{
-		{
-			name: "success - valid login",
-			requestBody: map[string]string{
-				"email":    "test@example.com",
-				"password": "password123",
-			},
-			expectedStatus: http.StatusOK,
-			setupUser:      true,
-			checkResponse:  true,
-		},
-		{
-			name: "failure - invalid JSON",
-			requestBody: map[string]interface{}{
-				"email": "",
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupUser:      false,
-			checkResponse:  false,
-		},
-		{
-			name: "failure - empty email",
-			requestBody: map[string]string{
-				"email":    "",
-				"password": "password123",
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupUser:      false,
-			checkResponse:  false,
-		},
-		{
-			name: "failure - user not found",
-			requestBody: map[string]string{
-				"email":    "nonexistent@example.com",
-				"password": "password123",
-			},
-			expectedStatus: http.StatusUnauthorized,
-			setupUser:      false,
-			checkResponse:  false,
-		},
-	}
+	t.Run("success - valid payload", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+			"id":             "user-1",
+			"email":          "user@example.com",
+			"roles":          []string{"user", "admin"},
+			"email_verified": true,
+		}, handler.Login)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tokenStore := repository.NewTokenStore()
-			jwtService := services.NewJWTService("test-secret", tokenStore)
-			handler := handlers.NewAuthHandler(jwtService)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
 
-			// Setup user if needed
-			if tt.setupUser {
-				hashedPassword, _ := utils.HashPassword("password123")
-				tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
-			}
+		resp := decodeSuccessResponse(t, w)
+		data, ok := resp.Data.(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected data object, got %T", resp.Data)
+		}
+		if data["access_token"] == "" {
+			t.Error("expected non-empty access_token")
+		}
+		if data["refresh_token"] == "" {
+			t.Error("expected non-empty refresh_token")
+		}
+	})
 
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
+	t.Run("failure - invalid json types", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+			"id":    "user-1",
+			"email": "user@example.com",
+			"roles": "not-an-array",
+		}, handler.Login)
 
-			body, _ := json.Marshal(tt.requestBody)
-			c.Request = httptest.NewRequest("POST", "/login", bytes.NewBuffer(body))
-			c.Request.Header.Set("Content-Type", "application/json")
-
-			handler.Login(c)
-
-			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d. Response: %s", tt.expectedStatus, w.Code, w.Body.String())
-			}
-
-			// Check that tokens are returned on success
-			if tt.checkResponse && w.Code == http.StatusOK {
-				var response map[string]interface{}
-				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-					t.Errorf("failed to unmarshal response: %v", err)
-				}
-				if data, ok := response["data"].(map[string]interface{}); ok {
-					if _, hasAccess := data["access_token"]; !hasAccess {
-						t.Error("expected access_token in response")
-					}
-					if _, hasRefresh := data["refresh_token"]; !hasRefresh {
-						t.Error("expected refresh_token in response")
-					}
-				}
-			}
-		})
-	}
-}
-
-func TestAuthHandler_Health(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	tokenStore := repository.NewTokenStore()
-	jwtService := services.NewJWTService("test-secret", tokenStore)
-	handler := handlers.NewAuthHandler(jwtService)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("GET", "/health", nil)
-
-	handler.Health(c)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
-	}
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 func TestAuthHandler_RefreshToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
 
-	tests := []struct {
-		name           string
-		requestBody    interface{}
-		expectedStatus int
-		setupTokens    bool
-	}{
-		{
-			name: "success - valid refresh token",
-			requestBody: map[string]string{
-				"refresh_token": "valid-token",
-			},
-			expectedStatus: http.StatusOK,
-			setupTokens:    true,
-		},
-		{
-			name: "failure - invalid JSON",
-			requestBody: map[string]interface{}{
-				"refresh_token": 123, // wrong type
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupTokens:    false,
-		},
-		{
-			name: "failure - invalid refresh token",
-			requestBody: map[string]string{
-				"refresh_token": "invalid-token",
-			},
-			expectedStatus: http.StatusUnauthorized,
-			setupTokens:    false,
-		},
-	}
+	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+		"id":             "user-1",
+		"email":          "user@example.com",
+		"roles":          []string{"user"},
+		"email_verified": true,
+	}, handler.Login)
+	loginResp := decodeSuccessResponse(t, loginW)
+	loginData := loginResp.Data.(map[string]interface{})
+	refreshToken := loginData["refresh_token"].(string)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tokenStore := repository.NewTokenStore()
-			jwtService := services.NewJWTService("test-secret", tokenStore)
-			handler := handlers.NewAuthHandler(jwtService)
+	t.Run("success - valid refresh token", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/refresh", map[string]string{
+			"refresh_token": refreshToken,
+		}, handler.RefreshToken)
 
-			var refreshToken string
-			if tt.setupTokens {
-				// Setup user and get valid refresh token
-				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
-				pair, _ := jwtService.GenerateTokenPair(user)
-				refreshToken = pair.RefreshToken
-				tt.requestBody.(map[string]string)["refresh_token"] = refreshToken
-			}
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
+	t.Run("failure - missing refresh token", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/refresh", map[string]string{}, handler.RefreshToken)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 
-			body, _ := json.Marshal(tt.requestBody)
-			c.Request = httptest.NewRequest("POST", "/refresh", bytes.NewBuffer(body))
-			c.Request.Header.Set("Content-Type", "application/json")
-
-			handler.RefreshToken(c)
-
-			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
-			}
-		})
-	}
-}
-
-func TestAuthHandler_Logout(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	tests := []struct {
-		name           string
-		requestBody    interface{}
-		expectedStatus int
-		setupTokens    bool
-	}{
-		{
-			name: "success - valid logout",
-			requestBody: map[string]string{
-				"refresh_token": "valid-token",
-			},
-			expectedStatus: http.StatusOK,
-			setupTokens:    true,
-		},
-		{
-			name: "failure - invalid JSON",
-			requestBody: map[string]interface{}{
-				"refresh_token": nil, // invalid
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupTokens:    false,
-		},
-		{
-			name: "failure - invalid refresh token",
-			requestBody: map[string]string{
-				"refresh_token": "invalid-token",
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupTokens:    false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tokenStore := repository.NewTokenStore()
-			jwtService := services.NewJWTService("test-secret", tokenStore)
-			handler := handlers.NewAuthHandler(jwtService)
-
-			var refreshToken string
-			if tt.setupTokens {
-				// Setup user and get valid refresh token
-				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
-				pair, _ := jwtService.GenerateTokenPair(user)
-				refreshToken = pair.RefreshToken
-				tt.requestBody.(map[string]string)["refresh_token"] = refreshToken
-			}
-
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-
-			body, _ := json.Marshal(tt.requestBody)
-			c.Request = httptest.NewRequest("POST", "/logout", bytes.NewBuffer(body))
-			c.Request.Header.Set("Content-Type", "application/json")
-
-			handler.Logout(c)
-
-			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
-			}
-		})
-	}
+	t.Run("failure - invalid refresh token", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/refresh", map[string]string{
+			"refresh_token": "not-a-token",
+		}, handler.RefreshToken)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected status 401, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 func TestAuthHandler_ValidateToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
 
-	tests := []struct {
-		name           string
-		requestBody    interface{}
-		expectedStatus int
-		setupTokens    bool
-	}{
-		{
-			name: "success - valid token",
-			requestBody: map[string]string{
-				"token": "valid-token",
-			},
-			expectedStatus: http.StatusOK,
-			setupTokens:    true,
-		},
-		{
-			name: "failure - invalid JSON",
-			requestBody: map[string]interface{}{
-				"token": 123, // wrong type
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupTokens:    false,
-		},
-		{
-			name: "failure - invalid token",
-			requestBody: map[string]string{
-				"token": "invalid-token",
-			},
-			expectedStatus: http.StatusUnauthorized,
-			setupTokens:    false,
-		},
-	}
+	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+		"id":             "user-123",
+		"email":          "user@example.com",
+		"roles":          []string{"user"},
+		"email_verified": true,
+	}, handler.Login)
+	loginResp := decodeSuccessResponse(t, loginW)
+	accessToken := loginResp.Data.(map[string]interface{})["access_token"].(string)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tokenStore := repository.NewTokenStore()
-			jwtService := services.NewJWTService("test-secret", tokenStore)
-			handler := handlers.NewAuthHandler(jwtService)
+	t.Run("success - valid token", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{
+			"token": accessToken,
+		}, handler.ValidateToken)
 
-			var accessToken string
-			if tt.setupTokens {
-				// Setup user and get valid access token
-				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
-				pair, _ := jwtService.GenerateTokenPair(user)
-				accessToken = pair.AccessToken
-				tt.requestBody.(map[string]string)["token"] = accessToken
-			}
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
+	t.Run("failure - invalid token", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{
+			"token": "invalid-token",
+		}, handler.ValidateToken)
 
-			body, _ := json.Marshal(tt.requestBody)
-			c.Request = httptest.NewRequest("POST", "/validate-token", bytes.NewBuffer(body))
-			c.Request.Header.Set("Content-Type", "application/json")
-
-			handler.ValidateToken(c)
-
-			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
-			}
-		})
-	}
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected status 401, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 func TestAuthHandler_VerifyToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
 
-	tests := []struct {
-		name           string
-		requestBody    interface{}
-		expectedStatus int
-		setupTokens    bool
-		expectValid    bool
-	}{
-		{
-			name: "success - valid token",
-			requestBody: map[string]string{
-				"token": "valid-token",
-			},
-			expectedStatus: http.StatusOK,
-			setupTokens:    true,
-			expectValid:    true,
-		},
-		{
-			name: "success - invalid token",
-			requestBody: map[string]string{
-				"token": "invalid-token",
-			},
-			expectedStatus: http.StatusOK,
-			setupTokens:    false,
-			expectValid:    false,
-		},
-		{
-			name: "failure - invalid JSON",
-			requestBody: map[string]interface{}{
-				"token": 123, // wrong type
-			},
-			expectedStatus: http.StatusBadRequest,
-			setupTokens:    false,
-			expectValid:    false,
-		},
-	}
+	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+		"id":             "user-verify",
+		"email":          "verify@example.com",
+		"roles":          []string{"user"},
+		"email_verified": true,
+	}, handler.Login)
+	loginResp := decodeSuccessResponse(t, loginW)
+	accessToken := loginResp.Data.(map[string]interface{})["access_token"].(string)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tokenStore := repository.NewTokenStore()
-			jwtService := services.NewJWTService("test-secret", tokenStore)
-			handler := handlers.NewAuthHandler(jwtService)
+	t.Run("success - valid token", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/verify-token", map[string]string{
+			"token": accessToken,
+		}, handler.VerifyToken)
 
-			var accessToken string
-			if tt.setupTokens {
-				// Setup user and get valid access token
-				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
-				pair, _ := jwtService.GenerateTokenPair(user)
-				accessToken = pair.AccessToken
-				tt.requestBody.(map[string]string)["token"] = accessToken
-			}
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
 
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
+		resp := decodeSuccessResponse(t, w)
+		data := resp.Data.(map[string]interface{})
+		if data["valid"] != true {
+			t.Fatalf("expected valid=true, got %v", data["valid"])
+		}
+	})
 
-			body, _ := json.Marshal(tt.requestBody)
-			c.Request = httptest.NewRequest("POST", "/verify-token", bytes.NewBuffer(body))
-			c.Request.Header.Set("Content-Type", "application/json")
+	t.Run("success - invalid token returns valid=false", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/verify-token", map[string]string{
+			"token": "bad-token",
+		}, handler.VerifyToken)
 
-			handler.VerifyToken(c)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
 
-			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
-			}
-
-			// For successful requests, check the valid field
-			if w.Code == http.StatusOK {
-				var response map[string]interface{}
-				json.Unmarshal(w.Body.Bytes(), &response)
-				data := response["data"].(map[string]interface{})
-				valid := data["valid"].(bool)
-				if valid != tt.expectValid {
-					t.Errorf("expected valid=%v, got valid=%v", tt.expectValid, valid)
-				}
-			}
-		})
-	}
+		resp := decodeSuccessResponse(t, w)
+		data := resp.Data.(map[string]interface{})
+		if data["valid"] != false {
+			t.Fatalf("expected valid=false, got %v", data["valid"])
+		}
+	})
 }
 
-func TestAuthHandler_GetProfile(t *testing.T) {
+func TestAuthHandler_Health(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
 
-	tests := []struct {
-		name           string
-		setupUserID    bool
-		userID         string
-		expectedStatus int
-	}{
-		{
-			name:           "success - valid profile request",
-			setupUserID:    true,
-			userID:         "valid-user-id",
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:           "failure - no userID in context",
-			setupUserID:    false,
-			expectedStatus: http.StatusUnauthorized,
-		},
-		{
-			name:           "failure - user not found",
-			setupUserID:    true,
-			userID:         "nonexistent-user",
-			expectedStatus: http.StatusNotFound,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tokenStore := repository.NewTokenStore()
-			jwtService := services.NewJWTService("test-secret", tokenStore)
-			handler := handlers.NewAuthHandler(jwtService)
-
-			var userID string
-			if tt.setupUserID && tt.userID == "valid-user-id" {
-				// Setup user
-				hashedPassword, _ := utils.HashPassword("password123")
-				user, _ := tokenStore.CreateUser("test-user-id", "test@example.com", hashedPassword, []string{"user"})
-				userID = user.ID
-			} else if tt.setupUserID {
-				userID = tt.userID
-			}
-
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Request = httptest.NewRequest("GET", "/profile", nil)
-
-			if tt.setupUserID {
-				c.Set("userID", userID)
-			}
-
-			handler.GetProfile(c)
-
-			if w.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
-			}
-		})
+	w := performJSONRequest(t, "GET", "/health", nil, handler.Health)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
 	}
 }
