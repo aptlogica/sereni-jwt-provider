@@ -24,10 +24,7 @@ COPY . .
 RUN swag init -g cmd/server/main.go -o docs
 
 # Build the application with optimizations
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags='-w -s -extldflags "-static"' \
-    -a -installsuffix cgo \
-    -o main ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags='-w -s -extldflags "-static"' -a -installsuffix cgo -o main ./cmd/server
 
 # ==============================================================================
 # Production Stage
@@ -47,8 +44,7 @@ COPY --from=builder /app/main ./main
 COPY --from=builder /app/docs ./docs
 
 # Create non-root user for security
-RUN adduser -D -s /bin/sh jwtprovider && \
-    chown -R jwtprovider:jwtprovider /app
+RUN adduser -D -s /bin/sh jwtprovider && chown -R jwtprovider:jwtprovider /app
 
 # Switch to non-root user
 USER jwtprovider
@@ -57,8 +53,7 @@ USER jwtprovider
 EXPOSE 8081
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8081/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:8081/health || exit 1
 
 # Run the application
 CMD ["./main"]
