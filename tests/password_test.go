@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Aptlogica Technologies Private Limited
+// SPDX-License-Identifier: MIT
+// Websites: https://www.aptlogica.com | https://www.serenibase.com
+// Support: support@aptlogica.com | support@serenibase.com
+
 package tests
 
 import (
@@ -147,6 +152,71 @@ func TestPasswordHashingRoundTrip(t *testing.T) {
 			// Verify wrong password fails
 			if utils.CheckPasswordHash("wrong"+password, hash) {
 				t.Error("wrong password should not match hash")
+			}
+		})
+	}
+}
+
+func TestPasswordHashingUniqueness(t *testing.T) {
+	password := "test-password-123"
+
+	// Generate two hashes for the same password
+	hash1, err1 := utils.HashPassword(password)
+	if err1 != nil {
+		t.Fatalf("failed to hash password first time: %v", err1)
+	}
+
+	hash2, err2 := utils.HashPassword(password)
+	if err2 != nil {
+		t.Fatalf("failed to hash password second time: %v", err2)
+	}
+
+	// Hashes should be different due to salt, even for the same password
+	if hash1 == hash2 {
+		t.Error("expected different hashes for same password due to salt")
+	}
+
+	// But both should validate the same password
+	if !utils.CheckPasswordHash(password, hash1) {
+		t.Error("first hash should validate password")
+	}
+	if !utils.CheckPasswordHash(password, hash2) {
+		t.Error("second hash should validate password")
+	}
+}
+
+func TestCheckPasswordHash_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		password string
+		hash     string
+		expected bool
+	}{
+		{
+			name:     "both empty strings",
+			password: "",
+			hash:     "",
+			expected: false,
+		},
+		{
+			name:     "password with only spaces",
+			password: "   ",
+			hash:     "",
+			expected: false,
+		},
+		{
+			name:     "hash with garbage data",
+			password: "test",
+			hash:     "garbage$hash$data",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := utils.CheckPasswordHash(tt.password, tt.hash)
+			if result != tt.expected {
+				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
 		})
 	}

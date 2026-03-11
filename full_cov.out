@@ -1,16 +1,16 @@
 mode: set
 auth-service/internal/config/config.go:21.63,23.16 2 1
-auth-service/internal/config/config.go:23.16,25.3 1 1
+auth-service/internal/config/config.go:23.16,25.3 1 0
 auth-service/internal/config/config.go:26.2,26.15 1 1
 auth-service/internal/config/config.go:29.27,39.54 2 1
 auth-service/internal/config/config.go:39.54,41.52 1 1
 auth-service/internal/config/config.go:41.52,43.4 1 1
-auth-service/internal/config/config.go:43.9,45.4 1 1
+auth-service/internal/config/config.go:43.9,45.4 1 0
 auth-service/internal/config/config.go:46.8,48.3 1 1
 auth-service/internal/config/config.go:49.2,49.55 1 1
 auth-service/internal/config/config.go:49.55,51.55 1 1
 auth-service/internal/config/config.go:51.55,53.4 1 1
-auth-service/internal/config/config.go:53.9,55.4 1 1
+auth-service/internal/config/config.go:53.9,55.4 1 0
 auth-service/internal/config/config.go:56.8,58.3 1 1
 auth-service/internal/config/config.go:60.2,62.26 2 1
 auth-service/internal/config/config.go:62.26,64.3 1 1
@@ -29,7 +29,7 @@ auth-service/internal/handlers/auth_handler.go:73.2,74.16 2 1
 auth-service/internal/handlers/auth_handler.go:74.16,78.3 3 1
 auth-service/internal/handlers/auth_handler.go:80.2,80.81 1 1
 auth-service/internal/handlers/auth_handler.go:94.53,96.47 2 1
-auth-service/internal/handlers/auth_handler.go:96.47,99.3 2 1
+auth-service/internal/handlers/auth_handler.go:96.47,99.3 2 0
 auth-service/internal/handlers/auth_handler.go:101.2,103.33 3 1
 auth-service/internal/handlers/auth_handler.go:103.33,104.36 1 1
 auth-service/internal/handlers/auth_handler.go:104.36,107.4 2 0
@@ -45,7 +45,7 @@ auth-service/internal/handlers/auth_handler.go:131.3,131.30 1 1
 auth-service/internal/handlers/auth_handler.go:131.30,133.4 1 1
 auth-service/internal/handlers/auth_handler.go:136.2,136.68 1 1
 auth-service/internal/handlers/auth_handler.go:149.51,151.47 2 1
-auth-service/internal/handlers/auth_handler.go:151.47,154.3 2 1
+auth-service/internal/handlers/auth_handler.go:151.47,154.3 2 0
 auth-service/internal/handlers/auth_handler.go:156.2,163.79 4 1
 auth-service/internal/handlers/auth_handler.go:173.46,177.2 1 1
 auth-service/internal/services/jwt_service.go:26.99,34.2 3 1
