@@ -300,6 +300,16 @@ func TestJWTService_GenerateTokenPair_SingleRole(t *testing.T) {
 func TestJWTService_ValidateToken_MalformedToken(t *testing.T) {
 	service := services.NewJWTService("test-secret", 900, 604800)
 
+	tokens, err := service.GenerateTokenPair(&models.User{
+		ID:             "test-user-id",
+		Email:          "test@example.com",
+		EMAIL_VERIFIED: true,
+		Roles:          []string{"user"},
+	})
+	if err != nil {
+		t.Fatalf("failed generating token pair: %v", err)
+	}
+
 	tests := []struct {
 		name  string
 		token string
@@ -314,7 +324,7 @@ func TestJWTService_ValidateToken_MalformedToken(t *testing.T) {
 		},
 		{
 			name:  "token with wrong signature",
-			token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+			token: tokens.AccessToken + "invalid",
 		},
 	}
 
