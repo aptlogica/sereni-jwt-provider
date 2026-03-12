@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Aptlogica Technologies Private Limited
+// SPDX-License-Identifier: MIT
+// Websites: https://www.aptlogica.com | https://www.serenibase.com
+// Support: support@aptlogica.com | support@serenibase.com
+
 package tests
 
 import (
@@ -237,4 +242,118 @@ func TestJWTService_ExpiredToken(t *testing.T) {
 	if claims != nil {
 		t.Fatal("expected nil claims for expired token")
 	}
+}
+
+func TestJWTService_GenerateTokenPair_EmptyRoles(t *testing.T) {
+	service := services.NewJWTService("test-secret", 900, 604800)
+	user := &models.User{
+		ID:             "no-roles-user",
+		Email:          "noroles@example.com",
+		EMAIL_VERIFIED: false,
+		Roles:          []string{},
+	}
+
+	tokens, err := service.GenerateTokenPair(user)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tokens == nil {
+		t.Fatal("expected tokens, got nil")
+	}
+
+	// Validate the token
+	claims, err := service.ValidateToken(tokens.AccessToken, true)
+	if err != nil {
+		t.Fatalf("failed to validate token: %v", err)
+	}
+	if claims.Roles != "" {
+		t.Errorf("expected empty roles string, got %s", claims.Roles)
+	}
+	if claims.EMAIL_VERIFIED != false {
+		t.Error("expected email_verified to be false")
+	}
+}
+
+func TestJWTService_GenerateTokenPair_SingleRole(t *testing.T) {
+	service := services.NewJWTService("test-secret", 900, 604800)
+	user := &models.User{
+		ID:             "single-role-user",
+		Email:          "single@example.com",
+		EMAIL_VERIFIED: true,
+		Roles:          []string{"admin"},
+	}
+
+	tokens, err := service.GenerateTokenPair(user)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	claims, err := service.ValidateToken(tokens.AccessToken, true)
+	if err != nil {
+		t.Fatalf("failed to validate token: %v", err)
+	}
+	if claims.Roles != "admin" {
+		t.Errorf("expected roles 'admin', got %s", claims.Roles)
+	}
+}
+
+func TestJWTService_ValidateToken_MalformedToken(t *testing.T) {
+	service := services.NewJWTService("test-secret", 900, 604800)
+
+	tests := []struct {
+		name  string
+		token string
+	}{
+		{
+			name:  "malformed token format",
+			token: "this.is.not.a.valid.jwt.token",
+		},
+		{
+			name:  "incomplete token",
+			token: "incomplete",
+		},
+		{
+			name:  "token with wrong signature",
+			token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			claims, err := service.ValidateToken(tt.token, true)
+			if err == nil {
+				t.Error("expected error for malformed token")
+			}
+			if claims != nil {
+				t.Error("expected nil claims for malformed token")
+			}
+		})
+	}
+}
+
+func TestJWTService_RefreshAccessToken_ErrorCases(t *testing.T) {
+	t.Run("expired refresh token", func(t *testing.T) {
+		expiredService := services.NewJWTService("test-secret", 900, -1)
+		user := &models.User{
+			ID:             "expired-refresh-user",
+			Email:          "expiredrefresh@example.com",
+			EMAIL_VERIFIED: true,
+			Roles:          []string{"user"},
+		}
+
+		tokens, err := expiredService.GenerateTokenPair(user)
+		if err != nil {
+			t.Fatalf("failed to generate tokens: %v", err)
+		}
+
+		time.Sleep(10 * time.Millisecond)
+
+		newTokens, err := expiredService.RefreshAccessToken(tokens.RefreshToken)
+		if err == nil {
+			t.Error("expected error for expired refresh token")
+		}
+		if newTokens != nil {
+			t.Error("expected nil tokens for expired refresh token")
+		}
+	})
 }

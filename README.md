@@ -145,7 +145,7 @@ Add modern JWT authentication to legacy applications without rewriting authentic
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/sereni-jwt-provider.git
+git clone https://github.com/aptlogica/sereni-jwt-provider.git
 cd sereni-jwt-provider
 
 # 2. Create environment file
@@ -177,7 +177,7 @@ Easiest way to get started. Great for development and production deployment.
 
 ```bash
 # Step 1: Clone the repository
-git clone https://github.com/yourusername/sereni-jwt-provider.git
+git clone https://github.com/aptlogica/sereni-jwt-provider.git
 cd sereni-jwt-provider
 
 # Step 2: Create environment configuration
@@ -240,7 +240,7 @@ For development, testing, or when you want to modify the code.
 go version
 
 # Step 2: Clone repository
-git clone https://github.com/yourusername/sereni-jwt-provider.git
+git clone https://github.com/aptlogica/sereni-jwt-provider.git
 cd sereni-jwt-provider
 
 # Step 3: Install dependencies
@@ -536,4 +536,4 @@ Full license text: See [LICENSE](LICENSE) file in repository.
 
 ---
 
-**Made with ❤️ by the Sereni Team**
+

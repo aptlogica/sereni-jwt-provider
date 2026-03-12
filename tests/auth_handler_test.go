@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Aptlogica Technologies Private Limited
+// SPDX-License-Identifier: MIT
+// Websites: https://www.aptlogica.com | https://www.serenibase.com
+// Support: support@aptlogica.com | support@serenibase.com
+
 package tests
 
 import (
@@ -94,6 +99,36 @@ func TestAuthHandler_Login(t *testing.T) {
 			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
 		}
 	})
+
+	t.Run("success - login with no roles", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+			"id":             "user-3",
+			"email":          "user3@example.com",
+			"roles":          []string{},
+			"email_verified": false,
+		}, handler.Login)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		resp := decodeSuccessResponse(t, w)
+		if resp.Code != "LOGIN_SUCCESS" {
+			t.Errorf("expected code LOGIN_SUCCESS, got %s", resp.Code)
+		}
+	})
+
+	t.Run("failure - malformed json", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/auth/login", bytes.NewBuffer([]byte("not-json")))
+		c.Request.Header.Set("Content-Type", "application/json")
+		handler.Login(c)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 func TestAuthHandler_RefreshToken(t *testing.T) {
@@ -169,6 +204,24 @@ func TestAuthHandler_ValidateToken(t *testing.T) {
 			t.Fatalf("expected status 401, got %d: %s", w.Code, w.Body.String())
 		}
 	})
+
+	t.Run("failure - empty token", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{
+			"token": "",
+		}, handler.ValidateToken)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("failure - missing token field", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{}, handler.ValidateToken)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 func TestAuthHandler_VerifyToken(t *testing.T) {
@@ -224,5 +277,110 @@ func TestAuthHandler_Health(t *testing.T) {
 	w := performJSONRequest(t, "GET", "/health", nil, handler.Health)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	resp := decodeSuccessResponse(t, w)
+	if resp.Code != "HEALTHY" {
+		t.Errorf("expected code HEALTHY, got %s", resp.Code)
+	}
+	if resp.Message != "Service is healthy" {
+		t.Errorf("expected message 'Service is healthy', got %s", resp.Message)
+	}
+
+	data, ok := resp.Data.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected data object, got %T", resp.Data)
+	}
+	if status, ok := data["status"].(string); !ok || status != "healthy" {
+		t.Errorf("expected status=healthy, got %v", data["status"])
+	}
+}
+
+func TestAuthHandler_VerifyToken_EdgeCases(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
+
+	t.Run("missing token field", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/verify-token", map[string]string{}, handler.VerifyToken)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("malformed json", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/auth/verify-token", bytes.NewBuffer([]byte("{invalid json")))
+		c.Request.Header.Set("Content-Type", "application/json")
+		handler.VerifyToken(c)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestAuthHandler_RefreshToken_EdgeCases(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
+
+	t.Run("empty refresh token string", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/refresh", map[string]string{
+			"refresh_token": "",
+		}, handler.RefreshToken)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("malformed json", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/auth/refresh", bytes.NewBuffer([]byte("not valid json")))
+		c.Request.Header.Set("Content-Type", "application/json")
+		handler.RefreshToken(c)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestAuthHandler_ValidateToken_ClaimsVerification(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
+
+	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+		"id":             "claims-test-user",
+		"email":          "claims@example.com",
+		"roles":          []string{"admin", "user"},
+		"email_verified": true,
+	}, handler.Login)
+	loginResp := decodeSuccessResponse(t, loginW)
+	accessToken := loginResp.Data.(map[string]interface{})["access_token"].(string)
+
+	w := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{
+		"token": accessToken,
+	}, handler.ValidateToken)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	resp := decodeSuccessResponse(t, w)
+	data := resp.Data.(map[string]interface{})
+
+	if data["user_id"] != "claims-test-user" {
+		t.Errorf("expected user_id=claims-test-user, got %v", data["user_id"])
+	}
+	if data["email"] != "claims@example.com" {
+		t.Errorf("expected email=claims@example.com, got %v", data["email"])
+	}
+	if data["roles"] != "admin,user" {
+		t.Errorf("expected roles=admin,user, got %v", data["roles"])
+	}
+	if data["token_type"] != "access" {
+		t.Errorf("expected token_type=access, got %v", data["token_type"])
 	}
 }
