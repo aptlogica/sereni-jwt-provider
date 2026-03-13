@@ -1,4 +1,4 @@
-module auth-service
+module github.com/aptlogica/sereni-jwt-provider
 
 go 1.24.0
 
