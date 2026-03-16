@@ -6,8 +6,8 @@
 package services
 
 import (
-	serrors "auth-service/internal/errors"
-	"auth-service/internal/models"
+	serrors "github.com/aptlogica/sereni-jwt-provider/internal/errors"
+	"github.com/aptlogica/sereni-jwt-provider/internal/models"
 	"fmt"
 	"time"
 

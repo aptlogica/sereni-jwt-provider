@@ -6,7 +6,7 @@
 package utils
 
 import (
-	"auth-service/internal/models"
+	"github.com/aptlogica/sereni-jwt-provider/internal/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

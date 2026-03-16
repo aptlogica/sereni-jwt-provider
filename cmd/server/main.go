@@ -14,13 +14,13 @@ support@serenibase.com
 package main
 
 import (
-	"auth-service/internal/config"
-	"auth-service/internal/handlers"
-	"auth-service/internal/services"
+	"github.com/aptlogica/sereni-jwt-provider/internal/config"
+	"github.com/aptlogica/sereni-jwt-provider/internal/handlers"
+	"github.com/aptlogica/sereni-jwt-provider/internal/services"
 	"log"
 	"os"
 
-	_ "auth-service/docs/swagger"
+	_ "github.com/aptlogica/sereni-jwt-provider/docs/swagger"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
