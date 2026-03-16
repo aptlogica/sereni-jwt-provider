@@ -6,10 +6,10 @@
 package handlers
 
 import (
-	serrors "auth-service/internal/errors"
-	"auth-service/internal/models"
-	"auth-service/internal/services"
-	"auth-service/internal/utils"
+	serrors "github.com/aptlogica/sereni-jwt-provider/internal/errors"
+	"github.com/aptlogica/sereni-jwt-provider/internal/models"
+	"github.com/aptlogica/sereni-jwt-provider/internal/services"
+	"github.com/aptlogica/sereni-jwt-provider/internal/utils"
 	"fmt"
 	"net/http"
 

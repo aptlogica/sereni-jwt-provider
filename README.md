@@ -5,11 +5,11 @@
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat-square&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Quality Gate Status](https://sonar.aptlogica.com/api/project_badges/measure?project=aptlogica_sereni-jwt-provider_abcdef12&metric=alert_status&token=sqb_152d71a0f9a3621514372a3e4c87460e3059bbc2)](https://sonar.aptlogica.com/dashboard?id=aptlogica_sereni-jwt-provider_abcdef12)
+[![Quality Gate Status](https://sonar.aptlogica.com/api/project_badges/measure?project=aptlogica_sereni-jwt-provider_e93385ef-3917-48bf-b724-ca96963f99ce&metric=alert_status&token=sqb_152d71a0f9a3621514372a3e4c87460e3059bbc2)](https://sonar.aptlogica.com/dashboard?id=aptlogica_sereni-jwt-provider_e93385ef-3917-48bf-b724-ca96963f99ce)
 
 ## Overview
 
-**sereni-jwt-provider** is an enterprise-grade JWT token service and authentication backend engineered for security, scalability, and reliability in production environments. This comprehensive JWT identity service and developer auth service features advanced token management, automated key rotation, and seamless integration capabilities for modern cloud-native applications. Open source JWT server for backend authentication.
+**sereni-jwt-provider** is an enterprise-grade JWT token service and authentication backend engineered for security, scalability, and reliability in production environments. This comprehensive JWT identity service and developer auth service features advanced token management, automated key rotation, and seamless integration capabilities for modern cloud-native applications as a backend authentication server with token based authentication and identity provider jwt capabilities for multi-tenant systems. Open source JWT server for backend authentication.
 
 ## Key Features
 

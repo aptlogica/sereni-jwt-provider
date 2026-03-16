@@ -6,8 +6,8 @@
 package tests
 
 import (
-	"auth-service/internal/models"
-	"auth-service/internal/services"
+	"github.com/aptlogica/sereni-jwt-provider/internal/models"
+	"github.com/aptlogica/sereni-jwt-provider/internal/services"
 	"testing"
 	"time"
 )

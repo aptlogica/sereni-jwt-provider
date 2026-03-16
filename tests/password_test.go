@@ -6,7 +6,7 @@
 package tests
 
 import (
-	"auth-service/internal/utils"
+	"github.com/aptlogica/sereni-jwt-provider/internal/utils"
 	"testing"
 )
 
