@@ -18,9 +18,30 @@ COVER_HTML := $(COVER_DIR)/coverage.html
 
 ##@ Help
 help: ## Display this help message
-	@awk 'BEGIN {FS = ":.*##"; printf "\n\033[1m%s\033[0m\n", "Usage:"}' $(MAKEFILE_LIST)
-	@awk 'BEGIN {FS = ":.*?##"; printf "  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
-	@awk 'BEGIN {FS = ":.*##"; printf "\n\033[1m%s\033[0m\n", "Targets:"}' $(MAKEFILE_LIST)
+	@echo ""
+	@echo "Usage: make <target>"
+	@echo ""
+	@echo "Available Targets:"
+	@echo "  setup              - Install development dependencies"
+	@echo "  dev                - Run in development mode"
+	@echo "  run                - Run the application"
+	@echo "  install            - Install the binary to GOPATH/bin"
+	@echo "  test               - Run all tests"
+	@echo "  test-race          - Run tests with race detection"
+	@echo "  test-coverage      - Run tests with coverage report"
+	@echo "  test-benchmark     - Run benchmark tests"
+	@echo "  coverage           - Alias for test-coverage"
+	@echo "  coverage-func      - Show coverage by function"
+	@echo "  lint               - Run linter"
+	@echo "  lint-fix           - Run linter with auto-fix"
+	@echo "  security           - Run security scanner"
+	@echo "  vet                - Run go vet"
+	@echo "  fmt                - Format code"
+	@echo "  check              - Run all quality checks"
+	@echo "  build              - Build the binary"
+	@echo "  build-all          - Build for all platforms"
+	@echo "  clean              - Clean build artifacts"
+	@echo ""
 
 ##@ Development
 setup: ## Install development dependencies
@@ -45,23 +66,23 @@ install: ## Install the binary to $GOPATH/bin
 ##@ Testing
 test: ## Run all tests
 	@echo "Running tests..."
-	@mkdir -p 
-	@go test -v -race -coverprofile= -covermode=atomic ./...
+	@mkdir -p $(COVER_DIR)
+	@go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic ./...
 test-race: ## Run tests with race detection
 	@echo "Running tests with race detection..."
 	@go test -race -v ./...
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
-	@mkdir -p 
-	@go test -v -race -coverprofile= -covermode=atomic ./...
-	@go tool cover -html= -o 
-	@go tool cover -func= | grep total:
-	@echo "Coverage report generated: "
+	@mkdir -p $(COVER_DIR)
+	@go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic ./...
+	@go tool cover -html=$(COVER_PROFILE) -o $(COVER_HTML)
+	@go tool cover -func=$(COVER_PROFILE) | grep total:
+	@echo "Coverage report generated: $(COVER_HTML)"
 
 coverage: test-coverage ## Alias for test-coverage
 
 coverage-func: ## Show coverage by function
-	@go tool cover -func=
+	@go tool cover -func=$(COVER_PROFILE)
 test-benchmark: ## Run benchmark tests
 	@echo "⚡ Running benchmark tests..."
 	@go test -bench=. -benchmem ./...
