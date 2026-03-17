@@ -6,15 +6,15 @@
 package tests
 
 import (
-	"auth-service/internal/handlers"
-	"auth-service/internal/models"
-	"auth-service/internal/services"
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/aptlogica/sereni-jwt-provider/internal/handlers"
+	"github.com/aptlogica/sereni-jwt-provider/internal/models"
+	"github.com/aptlogica/sereni-jwt-provider/internal/services"
 	"github.com/gin-gonic/gin"
 )
 

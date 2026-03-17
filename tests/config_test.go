@@ -6,9 +6,10 @@
 package tests
 
 import (
-	"auth-service/internal/config"
 	"os"
 	"testing"
+
+	"github.com/aptlogica/sereni-jwt-provider/internal/config"
 )
 
 func restoreEnv(t *testing.T, key, value string) {
