@@ -1,7 +1,7 @@
 # Sereni JWT Provider Makefile
 # Standard commands for Go development workflow
 
-.PHONY: help setup test test-coverage lint build clean install dev docker release
+.PHONY: help setup test test-race test-coverage coverage coverage-func lint build clean install dev run docker release
 
 # Default target
 .DEFAULT_GOAL := help
@@ -12,12 +12,36 @@ VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev
 BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 GO_VERSION := $(shell go version | cut -d ' ' -f 3)
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME) -X main.goVersion=$(GO_VERSION)"
+COVER_DIR := coverage
+COVER_PROFILE := $(COVER_DIR)/coverage.out
+COVER_HTML := $(COVER_DIR)/coverage.html
 
 ##@ Help
 help: ## Display this help message
-	@awk 'BEGIN {FS = ":.*##"; printf "\n\033[1m%s\033[0m\n", "Usage:"}' $(MAKEFILE_LIST)
-	@awk 'BEGIN {FS = ":.*?##"; printf "  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
-	@awk 'BEGIN {FS = ":.*##"; printf "\n\033[1m%s\033[0m\n", "Targets:"}' $(MAKEFILE_LIST)
+	@echo ""
+	@echo "Usage: make <target>"
+	@echo ""
+	@echo "Available Targets:"
+	@echo "  setup              - Install development dependencies"
+	@echo "  dev                - Run in development mode"
+	@echo "  run                - Run the application"
+	@echo "  install            - Install the binary to GOPATH/bin"
+	@echo "  test               - Run all tests"
+	@echo "  test-race          - Run tests with race detection"
+	@echo "  test-coverage      - Run tests with coverage report"
+	@echo "  test-benchmark     - Run benchmark tests"
+	@echo "  coverage           - Alias for test-coverage"
+	@echo "  coverage-func      - Show coverage by function"
+	@echo "  lint               - Run linter"
+	@echo "  lint-fix           - Run linter with auto-fix"
+	@echo "  security           - Run security scanner"
+	@echo "  vet                - Run go vet"
+	@echo "  fmt                - Format code"
+	@echo "  check              - Run all quality checks"
+	@echo "  build              - Build the binary"
+	@echo "  build-all          - Build for all platforms"
+	@echo "  clean              - Clean build artifacts"
+	@echo ""
 
 ##@ Development
 setup: ## Install development dependencies
@@ -32,6 +56,8 @@ dev: ## Run in development mode with hot reload
 	@echo "🚀 Starting development server..."
 	@go run main.go
 
+run: dev ## Run the application
+
 install: ## Install the binary to $GOPATH/bin
 	@echo "📦 Installing $(BINARY_NAME) to $$GOPATH/bin..."
 	@go install $(LDFLAGS) ./...
@@ -39,20 +65,24 @@ install: ## Install the binary to $GOPATH/bin
 
 ##@ Testing
 test: ## Run all tests
-	@echo "🧪 Running tests..."
-	@go test -v ./...
-
+	@echo "Running tests..."
+	@mkdir -p $(COVER_DIR)
+	@go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic ./...
 test-race: ## Run tests with race detection
-	@echo "🏁 Running tests with race detection..."
+	@echo "Running tests with race detection..."
 	@go test -race -v ./...
-
 test-coverage: ## Run tests with coverage report
-	@echo "📊 Running tests with coverage..."
-	@go test -coverprofile=coverage.out -covermode=atomic ./...
-	@go tool cover -html=coverage.out -o coverage.html
-	@go tool cover -func=coverage.out | grep total:
-	@echo "📈 Coverage report generated: coverage.html"
+	@echo "Running tests with coverage..."
+	@mkdir -p $(COVER_DIR)
+	@go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic ./...
+	@go tool cover -html=$(COVER_PROFILE) -o $(COVER_HTML)
+	@go tool cover -func=$(COVER_PROFILE) | grep total:
+	@echo "Coverage report generated: $(COVER_HTML)"
 
+coverage: test-coverage ## Alias for test-coverage
+
+coverage-func: ## Show coverage by function
+	@go tool cover -func=$(COVER_PROFILE)
 test-benchmark: ## Run benchmark tests
 	@echo "⚡ Running benchmark tests..."
 	@go test -bench=. -benchmem ./...
@@ -133,7 +163,7 @@ release: ## Create a new release
 ##@ Maintenance  
 clean: ## Clean build artifacts
 	@echo "🧹 Cleaning build artifacts..."
-	@rm -rf bin/ dist/ coverage.out coverage.html
+	@rm -rf bin/ dist/ $(COVER_DIR)
 	@go clean -cache -modcache -i -r
 	@echo "✅ Cleanup complete"
 
@@ -163,3 +193,5 @@ ci-test: test test-coverage lint security ## Run all CI tests
 
 ci-build: build docker-build ## Build artifacts for CI
 	@echo "🤖 CI build complete"
+
+
