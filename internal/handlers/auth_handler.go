@@ -6,11 +6,11 @@
 package handlers
 
 import (
+	"fmt"
 	serrors "github.com/aptlogica/sereni-jwt-provider/internal/errors"
 	"github.com/aptlogica/sereni-jwt-provider/internal/models"
 	"github.com/aptlogica/sereni-jwt-provider/internal/services"
 	"github.com/aptlogica/sereni-jwt-provider/internal/utils"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
