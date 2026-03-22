@@ -107,7 +107,8 @@ func TestLoadConfig_AllEnvironmentVariables(t *testing.T) {
 	}()
 
 	// Set all environment variables
-	os.Setenv("JWT_SECRET", "test-jwt-secret-key")
+	jwtKey := testSigningKey(t)
+	os.Setenv("JWT_SECRET", jwtKey)
 	os.Setenv("SERVER_PORT", "9090")
 	os.Setenv("SERVER_HOST", "localhost")
 	os.Setenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080")
@@ -118,8 +119,8 @@ func TestLoadConfig_AllEnvironmentVariables(t *testing.T) {
 
 	cfg := config.LoadConfig()
 
-	if cfg.JWTSecret != "test-jwt-secret-key" {
-		t.Errorf("expected JWTSecret test-jwt-secret-key, got %s", cfg.JWTSecret)
+	if cfg.JWTSecret != jwtKey {
+		t.Errorf("expected JWTSecret %s, got %s", jwtKey, cfg.JWTSecret)
 	}
 	if cfg.ServerPort != "9090" {
 		t.Errorf("expected ServerPort 9090, got %s", cfg.ServerPort)

@@ -15,7 +15,7 @@ import (
 
 func TestNewProvider(t *testing.T) {
 	config := sereni.Config{
-		Secret:    "test-secret",
+		Secret:    testSigningKey(t),
 		Expiry:    time.Hour,
 		Issuer:    "test-issuer",
 		Algorithm: "HS256",
@@ -28,6 +28,7 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestProvider_GenerateToken(t *testing.T) {
+	key := testSigningKey(t)
 	tests := []struct {
 		name        string
 		config      sereni.Config
@@ -38,7 +39,7 @@ func TestProvider_GenerateToken(t *testing.T) {
 		{
 			name: "success - HS256 algorithm",
 			config: sereni.Config{
-				Secret:    "test-secret-key",
+				Secret:    key,
 				Expiry:    time.Hour,
 				Issuer:    "test-issuer",
 				Algorithm: "HS256",
@@ -52,7 +53,7 @@ func TestProvider_GenerateToken(t *testing.T) {
 		{
 			name: "success - HS384 algorithm",
 			config: sereni.Config{
-				Secret:    "test-secret-key",
+				Secret:    key,
 				Expiry:    time.Hour,
 				Issuer:    "test-issuer",
 				Algorithm: "HS384",
@@ -65,7 +66,7 @@ func TestProvider_GenerateToken(t *testing.T) {
 		{
 			name: "success - HS512 algorithm",
 			config: sereni.Config{
-				Secret:    "test-secret-key",
+				Secret:    key,
 				Expiry:    time.Hour,
 				Issuer:    "test-issuer",
 				Algorithm: "HS512",
@@ -78,7 +79,7 @@ func TestProvider_GenerateToken(t *testing.T) {
 		{
 			name: "success - default algorithm when empty",
 			config: sereni.Config{
-				Secret:    "test-secret-key",
+				Secret:    key,
 				Expiry:    time.Hour,
 				Issuer:    "test-issuer",
 				Algorithm: "",
@@ -105,7 +106,7 @@ func TestProvider_GenerateToken(t *testing.T) {
 		{
 			name: "success - empty claims",
 			config: sereni.Config{
-				Secret:    "test-secret-key",
+				Secret:    key,
 				Expiry:    time.Hour,
 				Issuer:    "test-issuer",
 				Algorithm: "HS256",
@@ -116,7 +117,7 @@ func TestProvider_GenerateToken(t *testing.T) {
 		{
 			name: "success - nil claims",
 			config: sereni.Config{
-				Secret:    "test-secret-key",
+				Secret:    key,
 				Expiry:    time.Hour,
 				Issuer:    "test-issuer",
 				Algorithm: "HS256",
@@ -127,7 +128,7 @@ func TestProvider_GenerateToken(t *testing.T) {
 		{
 			name: "success - complex claims",
 			config: sereni.Config{
-				Secret:    "test-secret-key",
+				Secret:    key,
 				Expiry:    time.Hour,
 				Issuer:    "test-issuer",
 				Algorithm: "HS256",
@@ -178,8 +179,9 @@ func TestProvider_GenerateToken(t *testing.T) {
 }
 
 func TestProvider_ValidateToken(t *testing.T) {
+	key := testSigningKey(t)
 	config := sereni.Config{
-		Secret:    "test-secret-key",
+		Secret:    key,
 		Expiry:    time.Hour,
 		Issuer:    "test-issuer",
 		Algorithm: "HS256",
@@ -244,7 +246,7 @@ func TestProvider_ValidateToken(t *testing.T) {
 		{
 			name: "failure - wrong secret",
 			config: sereni.Config{
-				Secret:    "wrong-secret",
+				Secret:    testSigningKey(t),
 				Expiry:    time.Hour,
 				Issuer:    "test-issuer",
 				Algorithm: "HS256",
@@ -292,7 +294,7 @@ func TestProvider_ValidateToken_DifferentAlgorithms(t *testing.T) {
 	for _, algo := range algorithms {
 		t.Run("algorithm_"+algo, func(t *testing.T) {
 			config := sereni.Config{
-				Secret:    "test-secret-key",
+				Secret:    testSigningKey(t),
 				Expiry:    time.Hour,
 				Issuer:    "test-issuer",
 				Algorithm: algo,
@@ -320,8 +322,9 @@ func TestProvider_ValidateToken_DifferentAlgorithms(t *testing.T) {
 }
 
 func TestProvider_RefreshToken(t *testing.T) {
+	key := testSigningKey(t)
 	config := sereni.Config{
-		Secret:    "test-secret-key",
+		Secret:    key,
 		Expiry:    time.Hour,
 		Issuer:    "test-issuer",
 		Algorithm: "HS256",
@@ -402,7 +405,7 @@ func TestProvider_RefreshToken(t *testing.T) {
 func TestProvider_TokenExpiry(t *testing.T) {
 	// Create a provider with 1 second expiry
 	config := sereni.Config{
-		Secret:    "test-secret-key",
+		Secret:    testSigningKey(t),
 		Expiry:    time.Second,
 		Issuer:    "test-issuer",
 		Algorithm: "HS256",
@@ -436,7 +439,7 @@ func TestProvider_TokenExpiry(t *testing.T) {
 
 func TestProvider_IssuerClaim(t *testing.T) {
 	config := sereni.Config{
-		Secret:    "test-secret-key",
+		Secret:    testSigningKey(t),
 		Expiry:    time.Hour,
 		Issuer:    "custom-issuer",
 		Algorithm: "HS256",
@@ -464,7 +467,7 @@ func TestProvider_IssuerClaim(t *testing.T) {
 
 func TestProvider_StandardClaims(t *testing.T) {
 	config := sereni.Config{
-		Secret:    "test-secret-key",
+		Secret:    testSigningKey(t),
 		Expiry:    time.Hour,
 		Issuer:    "test-issuer",
 		Algorithm: "HS256",

@@ -13,14 +13,14 @@ import (
 )
 
 func TestNewJWTService(t *testing.T) {
-	service := services.NewJWTService("test-secret", 900, 604800)
+	service := services.NewJWTService(testSigningKey(t), 900, 604800)
 	if service == nil {
 		t.Fatal("expected service to be created")
 	}
 }
 
 func TestJWTService_GenerateTokenPair(t *testing.T) {
-	service := services.NewJWTService("test-secret", 120, 3600)
+	service := services.NewJWTService(testSigningKey(t), 120, 3600)
 	user := &models.User{
 		ID:             "test-user-id",
 		Email:          "test@example.com",
@@ -50,7 +50,7 @@ func TestJWTService_GenerateTokenPair(t *testing.T) {
 }
 
 func TestJWTService_Login(t *testing.T) {
-	service := services.NewJWTService("test-secret", 900, 604800)
+	service := services.NewJWTService(testSigningKey(t), 900, 604800)
 
 	req := &models.LoginRequest{
 		ID:             "test-user-id",
@@ -72,7 +72,7 @@ func TestJWTService_Login(t *testing.T) {
 }
 
 func TestJWTService_ValidateToken(t *testing.T) {
-	service := services.NewJWTService("test-secret", 900, 604800)
+	service := services.NewJWTService(testSigningKey(t), 900, 604800)
 	user := &models.User{
 		ID:             "test-user-id",
 		Email:          "test@example.com",
@@ -154,7 +154,7 @@ func TestJWTService_ValidateToken(t *testing.T) {
 }
 
 func TestJWTService_RefreshAccessToken(t *testing.T) {
-	service := services.NewJWTService("test-secret", 900, 604800)
+	service := services.NewJWTService(testSigningKey(t), 900, 604800)
 	user := &models.User{
 		ID:             "test-user-id",
 		Email:          "test@example.com",
@@ -221,7 +221,7 @@ func TestJWTService_RefreshAccessToken(t *testing.T) {
 }
 
 func TestJWTService_ExpiredToken(t *testing.T) {
-	service := services.NewJWTService("test-secret", -1, 3600)
+	service := services.NewJWTService(testSigningKey(t), -1, 3600)
 	user := &models.User{
 		ID:    "expired-user",
 		Email: "expired@example.com",
@@ -245,7 +245,7 @@ func TestJWTService_ExpiredToken(t *testing.T) {
 }
 
 func TestJWTService_GenerateTokenPair_EmptyRoles(t *testing.T) {
-	service := services.NewJWTService("test-secret", 900, 604800)
+	service := services.NewJWTService(testSigningKey(t), 900, 604800)
 	user := &models.User{
 		ID:             "no-roles-user",
 		Email:          "noroles@example.com",
@@ -275,7 +275,7 @@ func TestJWTService_GenerateTokenPair_EmptyRoles(t *testing.T) {
 }
 
 func TestJWTService_GenerateTokenPair_SingleRole(t *testing.T) {
-	service := services.NewJWTService("test-secret", 900, 604800)
+	service := services.NewJWTService(testSigningKey(t), 900, 604800)
 	user := &models.User{
 		ID:             "single-role-user",
 		Email:          "single@example.com",
@@ -298,7 +298,7 @@ func TestJWTService_GenerateTokenPair_SingleRole(t *testing.T) {
 }
 
 func TestJWTService_ValidateToken_MalformedToken(t *testing.T) {
-	service := services.NewJWTService("test-secret", 900, 604800)
+	service := services.NewJWTService(testSigningKey(t), 900, 604800)
 
 	tokens, err := service.GenerateTokenPair(&models.User{
 		ID:             "test-user-id",
@@ -343,7 +343,7 @@ func TestJWTService_ValidateToken_MalformedToken(t *testing.T) {
 
 func TestJWTService_RefreshAccessToken_ErrorCases(t *testing.T) {
 	t.Run("expired refresh token", func(t *testing.T) {
-		expiredService := services.NewJWTService("test-secret", 900, -1)
+		expiredService := services.NewJWTService(testSigningKey(t), 900, -1)
 		user := &models.User{
 			ID:             "expired-refresh-user",
 			Email:          "expiredrefresh@example.com",
