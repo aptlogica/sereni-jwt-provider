@@ -10,7 +10,12 @@ pipeline {
 
     stage('Test & Coverage') {
       steps {
-        sh 'go test ./... -coverprofile=coverage.out -covermode=atomic'
+        sh '''
+          go test -v -race -coverprofile=coverage.out -covermode=atomic \
+            -coverpkg=github.com/aptlogica/sereni-jwt-provider,github.com/aptlogica/sereni-jwt-provider/internal/config,github.com/aptlogica/sereni-jwt-provider/internal/handlers,github.com/aptlogica/sereni-jwt-provider/internal/services,github.com/aptlogica/sereni-jwt-provider/internal/utils \
+            ./tests/...
+          go tool cover -func=coverage.out
+        '''
       }
     }
 

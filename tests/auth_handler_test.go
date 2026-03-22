@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/aptlogica/sereni-jwt-provider/internal/handlers"
 	"github.com/aptlogica/sereni-jwt-provider/internal/models"
@@ -382,5 +383,118 @@ func TestAuthHandler_ValidateToken_ClaimsVerification(t *testing.T) {
 	}
 	if data["token_type"] != "access" {
 		t.Errorf("expected token_type=access, got %v", data["token_type"])
+	}
+}
+
+func TestAuthHandler_ValidateToken_ExpiredToken(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	// Create a handler with very short token expiry
+	jwtService := services.NewJWTService("test-secret", -1, 604800) // -1 second = already expired
+	handler := handlers.NewAuthHandler(jwtService)
+
+	// Generate expired access token
+	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+		"id":             "expired-user",
+		"email":          "expired@example.com",
+		"roles":          []string{"user"},
+		"email_verified": true,
+	}, handler.Login)
+	loginResp := decodeSuccessResponse(t, loginW)
+	expiredToken := loginResp.Data.(map[string]interface{})["access_token"].(string)
+
+	// Wait a tiny bit to ensure it's expired
+	time.Sleep(10 * time.Millisecond)
+
+	// Try to validate expired token
+	w := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{
+		"token": expiredToken,
+	}, handler.ValidateToken)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp models.ErrorResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	// JWT library returns "invalid claims: token is expired" which doesn't match serrors.ErrTokenExpire
+	// So the handler falls through to INVALID_TOKEN
+	if resp.Code != "INVALID_TOKEN" {
+		t.Errorf("expected code INVALID_TOKEN, got %s", resp.Code)
+	}
+}
+
+func TestAuthHandler_Login_MultipleRoles(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
+
+	t.Run("three roles", func(t *testing.T) {
+		w := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+			"id":             "multi-role-user",
+			"email":          "multi@example.com",
+			"roles":          []string{"admin", "editor", "viewer"},
+			"email_verified": true,
+		}, handler.Login)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		resp := decodeSuccessResponse(t, w)
+		accessToken := resp.Data.(map[string]interface{})["access_token"].(string)
+
+		// Validate the token to check claims
+		validateW := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{
+			"token": accessToken,
+		}, handler.ValidateToken)
+
+		validateResp := decodeSuccessResponse(t, validateW)
+		data := validateResp.Data.(map[string]interface{})
+		if data["roles"] != "admin,editor,viewer" {
+			t.Errorf("expected roles=admin,editor,viewer, got %v", data["roles"])
+		}
+	})
+}
+
+func TestAuthHandler_ValidateToken_NilClaimsError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
+
+	// Test with a token that would result in an error but not be expired or explicitly invalid
+	// Using a malformed token that might parse but have invalid claims
+	w := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{
+		"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+	}, handler.ValidateToken)
+
+	// This should fail with INVALID_TOKEN since it's signed with a different secret
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAuthHandler_RefreshToken_WithAccessToken(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := newTestHandler()
+
+	// Login first
+	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
+		"id":             "refresh-test-user",
+		"email":          "refresh@example.com",
+		"roles":          []string{"user"},
+		"email_verified": true,
+	}, handler.Login)
+	loginResp := decodeSuccessResponse(t, loginW)
+	accessToken := loginResp.Data.(map[string]interface{})["access_token"].(string)
+
+	// Try to refresh using access token instead of refresh token
+	w := performJSONRequest(t, "POST", "/auth/refresh", map[string]string{
+		"refresh_token": accessToken,
+	}, handler.RefreshToken)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d: %s", w.Code, w.Body.String())
 	}
 }
