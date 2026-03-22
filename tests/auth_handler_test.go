@@ -464,9 +464,9 @@ func TestAuthHandler_ValidateToken_NilClaimsError(t *testing.T) {
 	handler := newTestHandler()
 
 	// Test with a token that would result in an error but not be expired or explicitly invalid
-	// Using a malformed token that might parse but have invalid claims
+	// Using a deliberately malformed token string (non-secret) to trigger validation error
 	w := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{
-		"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+		"token": "not-a-real-jwt-token",
 	}, handler.ValidateToken)
 
 	// This should fail with INVALID_TOKEN since it's signed with a different secret
