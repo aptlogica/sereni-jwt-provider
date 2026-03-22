@@ -21,16 +21,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func newTestHandler() *handlers.AuthHandler {
-	jwtService := services.NewJWTService(randomTestSigningKey(), 900, 604800)
+func newTestHandler(t *testing.T) *handlers.AuthHandler {
+	jwtService := services.NewJWTService(randomTestSigningKey(t), 900, 604800)
 	return handlers.NewAuthHandler(jwtService)
 }
 
-func randomTestSigningKey() string {
+func randomTestSigningKey(t *testing.T) string {
+	if t != nil {
+		t.Helper()
+	}
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		// Fallback to a non-secret deterministic value if RNG fails in test env.
-		return "test-signing-key-fallback"
+		if t != nil {
+			t.Fatalf("failed to generate test signing key: %v", err)
+		}
+		panic(err)
 	}
 	return hex.EncodeToString(b)
 }
@@ -65,7 +70,7 @@ func decodeSuccessResponse(t *testing.T, w *httptest.ResponseRecorder) models.Su
 }
 
 func TestNewAuthHandler(t *testing.T) {
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 	if handler == nil {
 		t.Fatal("expected handler to be created")
 	}
@@ -73,7 +78,7 @@ func TestNewAuthHandler(t *testing.T) {
 
 func TestAuthHandler_Login(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	t.Run("success - valid payload", func(t *testing.T) {
 		w := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
@@ -145,7 +150,7 @@ func TestAuthHandler_Login(t *testing.T) {
 
 func TestAuthHandler_RefreshToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
 		"id":             "user-1",
@@ -186,7 +191,7 @@ func TestAuthHandler_RefreshToken(t *testing.T) {
 
 func TestAuthHandler_ValidateToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
 		"id":             "user-123",
@@ -238,7 +243,7 @@ func TestAuthHandler_ValidateToken(t *testing.T) {
 
 func TestAuthHandler_VerifyToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
 		"id":             "user-verify",
@@ -284,7 +289,7 @@ func TestAuthHandler_VerifyToken(t *testing.T) {
 
 func TestAuthHandler_Health(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	w := performJSONRequest(t, "GET", "/health", nil, handler.Health)
 	if w.Code != http.StatusOK {
@@ -310,7 +315,7 @@ func TestAuthHandler_Health(t *testing.T) {
 
 func TestAuthHandler_VerifyToken_EdgeCases(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	t.Run("missing token field", func(t *testing.T) {
 		w := performJSONRequest(t, "POST", "/auth/verify-token", map[string]string{}, handler.VerifyToken)
@@ -334,7 +339,7 @@ func TestAuthHandler_VerifyToken_EdgeCases(t *testing.T) {
 
 func TestAuthHandler_RefreshToken_EdgeCases(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	t.Run("empty refresh token string", func(t *testing.T) {
 		w := performJSONRequest(t, "POST", "/auth/refresh", map[string]string{
@@ -361,7 +366,7 @@ func TestAuthHandler_RefreshToken_EdgeCases(t *testing.T) {
 
 func TestAuthHandler_ValidateToken_ClaimsVerification(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
 		"id":             "claims-test-user",
@@ -401,7 +406,7 @@ func TestAuthHandler_ValidateToken_ExpiredToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// Create a handler with very short token expiry
-	jwtService := services.NewJWTService(randomTestSigningKey(), -1, 604800) // -1 second = already expired
+	jwtService := services.NewJWTService(randomTestSigningKey(t), -1, 604800) // -1 second = already expired
 	handler := handlers.NewAuthHandler(jwtService)
 
 	// Generate expired access token
@@ -440,7 +445,7 @@ func TestAuthHandler_ValidateToken_ExpiredToken(t *testing.T) {
 
 func TestAuthHandler_Login_MultipleRoles(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	t.Run("three roles", func(t *testing.T) {
 		w := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
@@ -472,12 +477,12 @@ func TestAuthHandler_Login_MultipleRoles(t *testing.T) {
 
 func TestAuthHandler_ValidateToken_NilClaimsError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	// Test with a token that would result in an error but not be expired or explicitly invalid
 	// Using a deliberately malformed token string (non-secret) to trigger validation error
 	w := performJSONRequest(t, "POST", "/auth/validate-token", map[string]string{
-		"token": "not-a-real-jwt-token",
+		"token": "invalid-token",
 	}, handler.ValidateToken)
 
 	// This should fail with INVALID_TOKEN since it's signed with a different secret
@@ -488,7 +493,7 @@ func TestAuthHandler_ValidateToken_NilClaimsError(t *testing.T) {
 
 func TestAuthHandler_RefreshToken_WithAccessToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := newTestHandler()
+	handler := newTestHandler(t)
 
 	// Login first
 	loginW := performJSONRequest(t, "POST", "/auth/login", map[string]interface{}{
