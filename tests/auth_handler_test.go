@@ -7,6 +7,8 @@ package tests
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -20,8 +22,17 @@ import (
 )
 
 func newTestHandler() *handlers.AuthHandler {
-	jwtService := services.NewJWTService("test-secret", 900, 604800)
+	jwtService := services.NewJWTService(randomTestSigningKey(), 900, 604800)
 	return handlers.NewAuthHandler(jwtService)
+}
+
+func randomTestSigningKey() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to a non-secret deterministic value if RNG fails in test env.
+		return "test-signing-key-fallback"
+	}
+	return hex.EncodeToString(b)
 }
 
 func performJSONRequest(t *testing.T, method, path string, body interface{}, h gin.HandlerFunc) *httptest.ResponseRecorder {
@@ -390,7 +401,7 @@ func TestAuthHandler_ValidateToken_ExpiredToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// Create a handler with very short token expiry
-	jwtService := services.NewJWTService("test-secret", -1, 604800) // -1 second = already expired
+	jwtService := services.NewJWTService(randomTestSigningKey(), -1, 604800) // -1 second = already expired
 	handler := handlers.NewAuthHandler(jwtService)
 
 	// Generate expired access token
