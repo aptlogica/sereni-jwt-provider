@@ -11,6 +11,14 @@ import (
 	jwt "github.com/aptlogica/sereni-jwt-provider"
 )
 
+// HTTP header and content type constants
+const (
+	HeaderContentType = "Content-Type"
+	ContentTypeJSON   = "application/json"
+	HeaderUserID      = "X-User-ID"
+	HeaderUsername    = "X-Username"
+)
+
 var provider *jwt.Provider
 
 func main() {
@@ -88,7 +96,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		"token_type": "Bearer",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(HeaderContentType, ContentTypeJSON)
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -119,8 +127,8 @@ func jwtMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// Add claims to request context (in real app, use context.Context)
-		r.Header.Set("X-User-ID", fmt.Sprintf("%v", claims["user_id"]))
-		r.Header.Set("X-Username", fmt.Sprintf("%v", claims["username"]))
+		r.Header.Set(HeaderUserID, fmt.Sprintf("%v", claims["user_id"]))
+		r.Header.Set(HeaderUsername, fmt.Sprintf("%v", claims["username"]))
 		r.Header.Set("X-User-Email", fmt.Sprintf("%v", claims["email"]))
 		r.Header.Set("X-User-Role", fmt.Sprintf("%v", claims["role"]))
 
@@ -137,7 +145,7 @@ func publicHandler(w http.ResponseWriter, r *http.Request) {
 		"auth":      "not required",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(HeaderContentType, ContentTypeJSON)
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -147,24 +155,24 @@ func protectedHandler(w http.ResponseWriter, r *http.Request) {
 		"message":   "This is a protected endpoint",
 		"timestamp": time.Now().Unix(),
 		"auth":      "required",
-		"user_id":   r.Header.Get("X-User-ID"),
-		"username":  r.Header.Get("X-Username"),
+		"user_id":   r.Header.Get(HeaderUserID),
+		"username":  r.Header.Get(HeaderUsername),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(HeaderContentType, ContentTypeJSON)
 	json.NewEncoder(w).Encode(response)
 }
 
 // Profile endpoint - returns user information from JWT
 func profileHandler(w http.ResponseWriter, r *http.Request) {
 	profile := map[string]interface{}{
-		"user_id":  r.Header.Get("X-User-ID"),
-		"username": r.Header.Get("X-Username"),
+		"user_id":  r.Header.Get(HeaderUserID),
+		"username": r.Header.Get(HeaderUsername),
 		"email":    r.Header.Get("X-User-Email"),
 		"role":     r.Header.Get("X-User-Role"),
 		"profile":  "active",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(HeaderContentType, ContentTypeJSON)
 	json.NewEncoder(w).Encode(profile)
 }
