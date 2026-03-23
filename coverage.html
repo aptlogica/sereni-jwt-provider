@@ -1,0 +1,759 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>config: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/aptlogica/sereni-jwt-provider/internal/config/config.go (100.0%)</option>
+				
+				<option value="file1">github.com/aptlogica/sereni-jwt-provider/internal/handlers/auth_handler.go (89.8%)</option>
+				
+				<option value="file2">github.com/aptlogica/sereni-jwt-provider/internal/services/jwt_service.go (86.7%)</option>
+				
+				<option value="file3">github.com/aptlogica/sereni-jwt-provider/internal/utils/password.go (100.0%)</option>
+				
+				<option value="file4">github.com/aptlogica/sereni-jwt-provider/internal/utils/response.go (100.0%)</option>
+				
+				<option value="file5">github.com/aptlogica/sereni-jwt-provider/jwt.go (87.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Copyright (c) 2026 Aptlogica Technologies Private Limited
+// SPDX-License-Identifier: MIT
+// Websites: https://www.aptlogica.com | https://www.serenibase.com
+// Support: support@aptlogica.com | support@serenibase.com
+
+package config
+
+import (
+        "fmt"
+        "os"
+        "strconv"
+)
+
+type Config struct {
+        JWTSecret            string
+        ServerPort           string
+        ServerHost           string
+        AllowedOrigins       string
+        Env                  string
+        LogLevel             string
+        AccessTokenDuration  int64 // in seconds
+        RefreshTokenDuration int64 // in seconds
+}
+
+// parseEnvInt64 parses an int64 from string, returns fallback if error
+func parseEnvInt64(val string, fallback int64) (int64, error) <span class="cov10" title="6">{
+        n, err := strconv.ParseInt(val, 10, 64)
+        if err != nil </span><span class="cov4" title="2">{
+                return fallback, err
+        }</span>
+        <span class="cov7" title="4">return n, nil</span>
+}
+
+func LoadConfig() *Config <span class="cov7" title="4">{
+        cfg := &amp;Config{
+                JWTSecret:      os.Getenv("JWT_SECRET"),
+                ServerPort:     os.Getenv("SERVER_PORT"),
+                ServerHost:     os.Getenv("SERVER_HOST"),
+                AllowedOrigins: os.Getenv("ALLOWED_ORIGINS"),
+                Env:            os.Getenv("ENV"),
+                LogLevel:       os.Getenv("LOG_LEVEL"),
+        }
+        // Parse AccessTokenDuration and RefreshTokenDuration from env (in seconds)
+        if v := os.Getenv("ACCESS_TOKEN_DURATION"); v != "" </span><span class="cov6" title="3">{
+                // fallback to 900 (15min) if parse fails
+                if sec, err := parseEnvInt64(v, 900); err == nil </span><span class="cov4" title="2">{
+                        cfg.AccessTokenDuration = sec
+                }</span> else<span class="cov1" title="1"> {
+                        cfg.AccessTokenDuration = 900
+                }</span>
+        } else<span class="cov1" title="1"> {
+                cfg.AccessTokenDuration = 900
+        }</span>
+        <span class="cov7" title="4">if v := os.Getenv("REFRESH_TOKEN_DURATION"); v != "" </span><span class="cov6" title="3">{
+                // fallback to 604800 (7d) if parse fails
+                if sec, err := parseEnvInt64(v, 604800); err == nil </span><span class="cov4" title="2">{
+                        cfg.RefreshTokenDuration = sec
+                }</span> else<span class="cov1" title="1"> {
+                        cfg.RefreshTokenDuration = 604800
+                }</span>
+        } else<span class="cov1" title="1"> {
+                cfg.RefreshTokenDuration = 604800
+        }</span>
+
+        <span class="cov7" title="4">fmt.Printf("Config loaded: %+v\n", cfg)
+
+        if cfg.ServerPort == "" </span><span class="cov6" title="3">{
+                cfg.ServerPort = "8081"
+        }</span>
+        <span class="cov7" title="4">if cfg.ServerHost == "" </span><span class="cov6" title="3">{
+                cfg.ServerHost = "0.0.0.0"
+        }</span>
+        <span class="cov7" title="4">return cfg</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Copyright (c) 2026 Aptlogica Technologies Private Limited
+// SPDX-License-Identifier: MIT
+// Websites: https://www.aptlogica.com | https://www.serenibase.com
+// Support: support@aptlogica.com | support@serenibase.com
+
+package handlers
+
+import (
+        "fmt"
+        serrors "github.com/aptlogica/sereni-jwt-provider/internal/errors"
+        "github.com/aptlogica/sereni-jwt-provider/internal/models"
+        "github.com/aptlogica/sereni-jwt-provider/internal/services"
+        "github.com/aptlogica/sereni-jwt-provider/internal/utils"
+        "net/http"
+
+        "github.com/gin-gonic/gin"
+)
+
+// AuthHandler handles authentication requests
+type AuthHandler struct {
+        jwtService *services.JWTService
+}
+
+// NewAuthHandler creates a new auth handler
+func NewAuthHandler(jwtService *services.JWTService) *AuthHandler <span class="cov10" title="13">{
+        return &amp;AuthHandler{
+                jwtService: jwtService,
+        }
+}</span>
+
+// Login godoc
+// @Summary      User login
+// @Description  Authenticate user and receive JWT tokens
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body models.LoginRequest true "Login credentials"
+// @Success      200 {object} models.SuccessResponse{data=models.TokenResponse}
+// @Failure      400 {object} models.ErrorResponse
+// @Failure      401 {object} models.ErrorResponse
+// @Failure      500 {object} models.ErrorResponse
+// @Router       /auth/login [post]
+func (h *AuthHandler) Login(c *gin.Context) <span class="cov9" title="11">{
+        var req models.LoginRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov3" title="2">{
+                utils.SendError(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+                return
+        }</span>
+
+        <span class="cov8" title="9">tokens, err := h.jwtService.Login(&amp;req)
+        if err != nil </span><span class="cov0" title="0">{
+                utils.SendError(c, http.StatusUnauthorized, "LOGIN_FAILED", err.Error())
+                return
+        }</span>
+
+        <span class="cov8" title="9">utils.SendSuccess(c, "LOGIN_SUCCESS", "Login successful", tokens)</span>
+}
+
+// RefreshToken godoc
+// @Summary      Refresh access token
+// @Description  Generate a new access token using a refresh token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body models.RefreshTokenRequest true "Refresh token"
+// @Success      200 {object} models.SuccessResponse{data=models.TokenResponse}
+// @Failure      400 {object} models.ErrorResponse
+// @Failure      401 {object} models.ErrorResponse
+// @Failure      500 {object} models.ErrorResponse
+// @Router       /auth/refresh [post]
+func (h *AuthHandler) RefreshToken(c *gin.Context) <span class="cov7" title="6">{
+        var req models.RefreshTokenRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov4" title="3">{
+                utils.SendError(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+                return
+        }</span>
+
+        <span class="cov4" title="3">tokens, err := h.jwtService.RefreshAccessToken(req.RefreshToken)
+        if err != nil </span><span class="cov3" title="2">{
+                fmt.Println("err: ", err)
+                utils.SendError(c, http.StatusUnauthorized, "REFRESH_FAILED", "Invalid or expired refresh token")
+                return
+        }</span>
+
+        <span class="cov1" title="1">utils.SendSuccess(c, "TOKEN_REFRESHED", "Token refreshed successfully", tokens)</span>
+}
+
+// ValidateToken godoc
+// @Summary      Validate token
+// @Description  Validate a JWT token and return its claims
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body models.VerifyTokenRequest true "Token to validate"
+// @Success      200 {object} models.SuccessResponse{data=models.TokenClaims}
+// @Failure      400 {object} models.ErrorResponse
+// @Failure      401 {object} models.ErrorResponse
+// @Router       /auth/validate-token [post]
+func (h *AuthHandler) ValidateToken(c *gin.Context) <span class="cov8" title="8">{
+        var req models.VerifyTokenRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov3" title="2">{
+                utils.SendError(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+                return
+        }</span>
+
+        <span class="cov7" title="6">claims, err := h.jwtService.ValidateToken(req.Token, true)
+        fmt.Printf("[DEBUG] ValidateToken: token=%s, claims=%+v, err=%v\n", req.Token, claims, err)
+        if err != nil || claims == nil </span><span class="cov4" title="3">{
+                if err == serrors.ErrTokenExpire </span><span class="cov0" title="0">{
+                        utils.SendError(c, http.StatusUnauthorized, "TOKEN_EXPIRED", "Token has expired")
+                        return
+                }</span>
+                <span class="cov4" title="3">if err == serrors.ErrInvalidToken </span><span class="cov0" title="0">{
+                        utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid")
+                        return
+                }</span>
+                <span class="cov4" title="3">utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid or expired")
+                return</span>
+        }
+
+        // Convert to Swagger-friendly format
+        <span class="cov4" title="3">tokenClaims := models.TokenClaims{}
+        if claims != nil </span><span class="cov4" title="3">{
+                tokenClaims.UserID = claims.UserID
+                tokenClaims.Email = claims.Email
+                tokenClaims.Roles = claims.Roles
+                tokenClaims.TokenType = claims.TokenType
+                tokenClaims.Issuer = claims.Issuer
+                tokenClaims.Subject = claims.Subject
+                if claims.ExpiresAt != nil </span><span class="cov4" title="3">{
+                        tokenClaims.ExpiresAt = claims.ExpiresAt.Unix()
+                }</span>
+                <span class="cov4" title="3">if claims.IssuedAt != nil </span><span class="cov4" title="3">{
+                        tokenClaims.IssuedAt = claims.IssuedAt.Unix()
+                }</span>
+                <span class="cov4" title="3">if claims.NotBefore != nil </span><span class="cov4" title="3">{
+                        tokenClaims.NotBefore = claims.NotBefore.Unix()
+                }</span>
+        }
+
+        <span class="cov4" title="3">utils.SendSuccess(c, "TOKEN_VALID", "Token is valid", tokenClaims)</span>
+}
+
+// VerifyToken godoc
+// @Summary      Verify token
+// @Description  Verify if a token is valid (returns boolean)
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body models.VerifyTokenRequest true "Token to verify"
+// @Success      200 {object} models.SuccessResponse{data=map[string]bool}
+// @Failure      400 {object} models.ErrorResponse
+// @Router       /auth/verify-token [post]
+func (h *AuthHandler) VerifyToken(c *gin.Context) <span class="cov5" title="4">{
+        var req models.VerifyTokenRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov3" title="2">{
+                utils.SendError(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+                return
+        }</span>
+
+        <span class="cov3" title="2">_, err := h.jwtService.ValidateToken(req.Token, true)
+        isValid := err == nil
+
+        result := map[string]bool{
+                "valid": isValid,
+        }
+
+        utils.SendSuccess(c, "TOKEN_VERIFIED", "Token verification complete", result)</span>
+}
+
+// Health godoc
+// @Summary      Health check
+// @Description  Check if the service is running
+// @Tags         health
+// @Produce      json
+// @Success      200 {object} models.SuccessResponse{data=map[string]string}
+// @Router       /health [get]
+func (h *AuthHandler) Health(c *gin.Context) <span class="cov1" title="1">{
+        utils.SendSuccess(c, "HEALTHY", "Service is healthy", map[string]string{
+                "status": "healthy",
+        })
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Copyright (c) 2026 Aptlogica Technologies Private Limited
+// SPDX-License-Identifier: MIT
+// Websites: https://www.aptlogica.com | https://www.serenibase.com
+// Support: support@aptlogica.com | support@serenibase.com
+
+package services
+
+import (
+        "fmt"
+        serrors "github.com/aptlogica/sereni-jwt-provider/internal/errors"
+        "github.com/aptlogica/sereni-jwt-provider/internal/models"
+        "time"
+
+        "github.com/golang-jwt/jwt/v5"
+)
+
+const (
+        TokenTypeAccess  = "access"
+        TokenTypeRefresh = "refresh"
+        Issuer           = "auth-service"
+)
+
+// JWTService handles JWT operations
+type JWTService struct {
+        secretKey            string
+        accessTokenDuration  time.Duration
+        refreshTokenDuration time.Duration
+}
+
+// NewJWTService creates a new JWT service
+func NewJWTService(secretKey string, accessTokenDuration, refreshTokenDuration int64) *JWTService <span class="cov8" title="23">{
+        svc := &amp;JWTService{
+                secretKey:            secretKey,
+                accessTokenDuration:  time.Duration(accessTokenDuration) * time.Second,
+                refreshTokenDuration: time.Duration(refreshTokenDuration) * time.Second,
+        }
+        fmt.Printf("[DEBUG] JWTService: accessTokenDuration=%v seconds, refreshTokenDuration=%v seconds\n", svc.accessTokenDuration.Seconds(), svc.refreshTokenDuration.Seconds())
+        return svc
+}</span>
+
+// Login authenticates a user and returns tokens
+func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse, error) <span class="cov6" title="10">{
+        user := &amp;models.User{
+                ID:             loginReq.ID,
+                Email:          loginReq.Email,
+                Roles:          loginReq.Roles,
+                EMAIL_VERIFIED: loginReq.EMAIL_VERIFIED,
+        }
+
+        // Generate tokens
+        return s.GenerateTokenPair(user)
+}</span>
+
+// GenerateTokenPair generates access and refresh tokens
+func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse, error) <span class="cov8" title="20">{
+        fmt.Printf("[DEBUG] GenerateTokenPair: userID=%s, email=%s, roles=%v\n, email_verified=%v\n", user.ID, user.Email, user.Roles, user.EMAIL_VERIFIED)
+        // Generate access token
+        accessToken, err := s.generateToken(user, TokenTypeAccess, s.accessTokenDuration)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Generate refresh token
+        <span class="cov8" title="20">refreshToken, err := s.generateToken(user, TokenTypeRefresh, s.refreshTokenDuration)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Store refresh token for revocation
+        <span class="cov8" title="20">return &amp;models.TokenResponse{
+                AccessToken:  accessToken,
+                RefreshToken: refreshToken,
+                TokenType:    "Bearer",
+                ExpiresIn:    int64(s.accessTokenDuration.Seconds()),
+        }, nil</span>
+}
+
+// generateToken generates a JWT token
+func (s *JWTService) generateToken(user *models.User, tokenType string, duration time.Duration) (string, error) <span class="cov10" title="40">{
+        now := time.Now()
+        exp := now.Add(duration)
+        fmt.Printf("[DEBUG] generateToken: now=%v, duration=%v, exp=%v (seconds diff=%v)\n", now.Unix(), duration.Seconds(), exp.Unix(), exp.Unix()-now.Unix())
+
+        // Convert roles array to comma-separated string
+        rolesStr := ""
+        if len(user.Roles) &gt; 0 </span><span class="cov9" title="32">{
+                rolesStr = user.Roles[0]
+                for i := 1; i &lt; len(user.Roles); i++ </span><span class="cov7" title="12">{
+                        rolesStr += "," + user.Roles[i]
+                }</span>
+        }
+
+        <span class="cov10" title="40">claims := models.CustomClaims{
+                UserID:         user.ID,
+                Email:          user.Email,
+                Roles:          rolesStr,
+                TokenType:      tokenType,
+                EMAIL_VERIFIED: user.EMAIL_VERIFIED,
+                RegisteredClaims: jwt.RegisteredClaims{
+                        Subject:   user.ID,
+                        ExpiresAt: jwt.NewNumericDate(exp),
+                        IssuedAt:  jwt.NewNumericDate(now),
+                        NotBefore: jwt.NewNumericDate(now),
+                        Issuer:    Issuer,
+                },
+        }
+
+        token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+        return token.SignedString([]byte(s.secretKey))</span>
+}
+
+// ValidateToken validates and parses a JWT token
+func (s *JWTService) ValidateToken(tokenString string, checkExpiry bool) (*models.CustomClaims, error) <span class="cov8" title="26">{
+        token, err := jwt.ParseWithClaims(tokenString, &amp;models.CustomClaims{}, func(token *jwt.Token) (interface{}, error) </span><span class="cov7" title="17">{
+                if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok </span><span class="cov0" title="0">{
+                        return nil, serrors.ErrUnexpectedSigningMethod
+                }</span>
+                <span class="cov7" title="17">return []byte(s.secretKey), nil</span>
+        })
+
+        <span class="cov8" title="26">if err != nil </span><span class="cov7" title="14">{
+                return nil, err
+        }</span>
+
+        <span class="cov7" title="12">if !token.Valid </span><span class="cov0" title="0">{
+                return nil, serrors.ErrInvalidToken
+        }</span>
+
+        <span class="cov7" title="12">claims, ok := token.Claims.(*models.CustomClaims)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, serrors.ErrInvalidToken
+        }</span>
+
+        <span class="cov7" title="12">if claims.ExpiresAt != nil &amp;&amp; time.Now().After(claims.ExpiresAt.Time) </span><span class="cov0" title="0">{
+                return nil, serrors.ErrTokenExpire
+        }</span>
+
+        <span class="cov7" title="12">return claims, nil</span>
+}
+
+// RefreshAccessToken refreshes the access token using a refresh token
+func (s *JWTService) RefreshAccessToken(refreshToken string) (*models.TokenResponse, error) <span class="cov6" title="8">{
+        // Validate refresh token
+        claims, err := s.ValidateToken(refreshToken, false)
+        if err != nil </span><span class="cov4" title="4">{
+                return nil, serrors.ErrInvalidRefreshTokenSvc
+        }</span>
+
+        // Check token type
+        <span class="cov4" title="4">if claims.TokenType != TokenTypeRefresh </span><span class="cov2" title="2">{
+                return nil, serrors.ErrNotRefreshToken
+        }</span>
+
+        <span class="cov2" title="2">user := &amp;models.User{
+                ID:             claims.UserID,
+                Email:          claims.Email,
+                EMAIL_VERIFIED: claims.EMAIL_VERIFIED,
+                Roles:          []string{},
+        }
+
+        // Generate new token pair (token rotation)
+        return s.GenerateTokenPair(user)</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Copyright (c) 2026 Aptlogica Technologies Private Limited
+// SPDX-License-Identifier: MIT
+// Websites: https://www.aptlogica.com | https://www.serenibase.com
+// Support: support@aptlogica.com | support@serenibase.com
+
+package utils
+
+import "golang.org/x/crypto/bcrypt"
+
+// HashPassword hashes a plain text password
+func HashPassword(password string) (string, error) <span class="cov8" title="11">{
+        bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+        return string(bytes), err
+}</span>
+
+// CheckPasswordHash compares a hashed password with a plain text password
+func CheckPasswordHash(password, hash string) bool <span class="cov10" title="20">{
+        err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+        return err == nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Copyright (c) 2026 Aptlogica Technologies Private Limited
+// SPDX-License-Identifier: MIT
+// Websites: https://www.aptlogica.com | https://www.serenibase.com
+// Support: support@aptlogica.com | support@serenibase.com
+
+package utils
+
+import (
+        "github.com/aptlogica/sereni-jwt-provider/internal/models"
+        "net/http"
+
+        "github.com/gin-gonic/gin"
+)
+
+// SendSuccess sends a successful response
+func SendSuccess(c *gin.Context, code string, message string, data interface{}) <span class="cov10" title="24">{
+        response := models.SuccessResponse{
+                Success: true,
+                Code:    code,
+                Message: message,
+                Data:    data,
+        }
+        c.JSON(http.StatusOK, response)
+}</span>
+
+// SendError sends an error response
+func SendError(c *gin.Context, statusCode int, code string, message string) <span class="cov9" title="22">{
+        response := models.ErrorResponse{
+                Success: false,
+                Code:    code,
+                Message: message,
+                Data:    nil,
+        }
+        c.JSON(statusCode, response)
+}</span>
+
+// SendCreated sends a created response
+func SendCreated(c *gin.Context, code string, message string, data interface{}) <span class="cov4" title="4">{
+        response := models.SuccessResponse{
+                Success: true,
+                Code:    code,
+                Message: message,
+                Data:    data,
+        }
+        c.JSON(http.StatusCreated, response)
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Copyright (c) 2026 Aptlogica Technologies Private Limited
+// SPDX-License-Identifier: MIT
+// Websites: https://www.aptlogica.com | https://www.serenibase.com
+// Support: support@aptlogica.com | support@serenibase.com
+
+// Package sereni_jwt_provider provides a simple JWT authentication library.
+// This is the public API for the Sereni JWT Provider.
+package sereni_jwt_provider
+
+import (
+        "errors"
+        "time"
+
+        "github.com/golang-jwt/jwt/v5"
+)
+
+// Config holds the JWT provider configuration.
+type Config struct {
+        // Secret is the key used to sign and verify tokens
+        Secret string
+        // Expiry is the duration until the token expires
+        Expiry time.Duration
+        // Issuer is the issuer claim for the token
+        Issuer string
+        // Algorithm is the signing algorithm (e.g., "HS256", "HS384", "HS512")
+        Algorithm string
+}
+
+// Provider is the JWT provider that handles token generation and validation.
+type Provider struct {
+        config Config
+}
+
+// NewProvider creates a new JWT provider with the given configuration.
+func NewProvider(config Config) *Provider <span class="cov8" title="23">{
+        return &amp;Provider{config: config}
+}</span>
+
+// GenerateToken creates a new JWT token with the given claims.
+func (p *Provider) GenerateToken(claims map[string]interface{}) (string, error) <span class="cov7" title="17">{
+        if p.config.Secret == "" </span><span class="cov1" title="1">{
+                return "", errors.New("secret key is required")
+        }</span>
+
+        <span class="cov7" title="16">now := time.Now()
+
+        // Create JWT claims
+        jwtClaims := jwt.MapClaims{
+                "iat": now.Unix(),
+                "exp": now.Add(p.config.Expiry).Unix(),
+                "iss": p.config.Issuer,
+        }
+
+        // Add custom claims
+        for key, value := range claims </span><span class="cov8" title="27">{
+                jwtClaims[key] = value
+        }</span>
+
+        // Determine signing method
+        <span class="cov7" title="16">var signingMethod jwt.SigningMethod
+        switch p.config.Algorithm </span>{
+        case "HS384":<span class="cov2" title="2">
+                signingMethod = jwt.SigningMethodHS384</span>
+        case "HS512":<span class="cov2" title="2">
+                signingMethod = jwt.SigningMethodHS512</span>
+        default:<span class="cov6" title="12">
+                signingMethod = jwt.SigningMethodHS256</span>
+        }
+
+        // Create and sign the token
+        <span class="cov7" title="16">token := jwt.NewWithClaims(signingMethod, jwtClaims)
+        signedToken, err := token.SignedString([]byte(p.config.Secret))
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov7" title="16">return signedToken, nil</span>
+}
+
+// ValidateToken validates a JWT token and returns the claims.
+func (p *Provider) ValidateToken(tokenString string) (map[string]interface{}, error) <span class="cov7" title="17">{
+        if p.config.Secret == "" </span><span class="cov1" title="1">{
+                return nil, errors.New("secret key is required")
+        }</span>
+
+        // Parse the token
+        <span class="cov7" title="16">token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) </span><span class="cov6" title="11">{
+                // Validate signing method
+                switch p.config.Algorithm </span>{
+                case "HS384":<span class="cov1" title="1">
+                        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok </span><span class="cov0" title="0">{
+                                return nil, errors.New("unexpected signing method")
+                        }</span>
+                case "HS512":<span class="cov1" title="1">
+                        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok </span><span class="cov0" title="0">{
+                                return nil, errors.New("unexpected signing method")
+                        }</span>
+                default:<span class="cov6" title="9">
+                        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok </span><span class="cov0" title="0">{
+                                return nil, errors.New("unexpected signing method")
+                        }</span>
+                }
+                <span class="cov6" title="11">return []byte(p.config.Secret), nil</span>
+        })
+
+        <span class="cov7" title="16">if err != nil </span><span class="cov5" title="7">{
+                return nil, err
+        }</span>
+
+        <span class="cov6" title="9">if !token.Valid </span><span class="cov0" title="0">{
+                return nil, errors.New("invalid token")
+        }</span>
+
+        // Extract claims
+        <span class="cov6" title="9">claims, ok := token.Claims.(jwt.MapClaims)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, errors.New("invalid claims format")
+        }</span>
+
+        // Convert to map[string]interface{}
+        <span class="cov6" title="9">result := make(map[string]interface{})
+        for key, value := range claims </span><span class="cov10" title="42">{
+                result[key] = value
+        }</span>
+
+        <span class="cov6" title="9">return result, nil</span>
+}
+
+// RefreshToken generates a new token from an existing valid token.
+func (p *Provider) RefreshToken(tokenString string) (string, error) <span class="cov3" title="3">{
+        claims, err := p.ValidateToken(tokenString)
+        if err != nil </span><span class="cov2" title="2">{
+                return "", err
+        }</span>
+
+        // Remove standard claims that will be regenerated
+        <span class="cov1" title="1">delete(claims, "iat")
+        delete(claims, "exp")
+        delete(claims, "iss")
+
+        return p.GenerateToken(claims)</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -8,13 +8,12 @@
 
 # Variables
 BINARY_NAME := sereni-jwt-provider
-VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
-GO_VERSION := $(shell go version | cut -d ' ' -f 3)
+VERSION := $(shell git describe --tags --always --dirty 2>nul || echo dev)
+BUILD_TIME := $(shell powershell -Command "Get-Date -Format 'yyyy-MM-dd_HH:mm:ss'" 2>nul || date -u '+%Y-%m-%d_%H:%M:%S')
+GO_VERSION := $(shell go env GOVERSION)
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME) -X main.goVersion=$(GO_VERSION)"
-COVER_DIR := coverage
-COVER_PROFILE := $(COVER_DIR)/coverage.out
-COVER_HTML := $(COVER_DIR)/coverage.html
+COVER_PROFILE := coverage.out
+COVER_HTML := coverage.html
 
 ##@ Help
 help: ## Display this help message
@@ -63,20 +62,23 @@ install: ## Install the binary to $GOPATH/bin
 	@go install $(LDFLAGS) ./...
 	@echo "✅ Installation complete"
 
+# Coverage packages to include (main package + internal packages)
+COVERPKG := github.com/aptlogica/sereni-jwt-provider,github.com/aptlogica/sereni-jwt-provider/internal/config,github.com/aptlogica/sereni-jwt-provider/internal/handlers,github.com/aptlogica/sereni-jwt-provider/internal/services,github.com/aptlogica/sereni-jwt-provider/internal/utils
+
 ##@ Testing
 test: ## Run all tests
 	@echo "Running tests..."
-	@mkdir -p $(COVER_DIR)
-	@go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic ./...
+	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=$(COVERPKG) ./tests/..."
+
 test-race: ## Run tests with race detection
 	@echo "Running tests with race detection..."
 	@go test -race -v ./...
+
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
-	@mkdir -p $(COVER_DIR)
-	@go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic ./...
-	@go tool cover -html=$(COVER_PROFILE) -o $(COVER_HTML)
-	@go tool cover -func=$(COVER_PROFILE) | grep total:
+	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=$(COVERPKG) ./tests/..."
+	cmd /c "go tool cover -html=$(COVER_PROFILE) -o $(COVER_HTML)"
+	cmd /c "go tool cover -func=$(COVER_PROFILE)"
 	@echo "Coverage report generated: $(COVER_HTML)"
 
 coverage: test-coverage ## Alias for test-coverage
@@ -163,7 +165,7 @@ release: ## Create a new release
 ##@ Maintenance  
 clean: ## Clean build artifacts
 	@echo "🧹 Cleaning build artifacts..."
-	@rm -rf bin/ dist/ $(COVER_DIR)
+	@rm -rf bin/ dist/ $(COVER_PROFILE) $(COVER_HTML)
 	@go clean -cache -modcache -i -r
 	@echo "✅ Cleanup complete"
 

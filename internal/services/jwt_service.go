@@ -6,9 +6,9 @@
 package services
 
 import (
+	"fmt"
 	serrors "github.com/aptlogica/sereni-jwt-provider/internal/errors"
 	"github.com/aptlogica/sereni-jwt-provider/internal/models"
-	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"

@@ -18,8 +18,10 @@ jobs:
           go-version: '1.24'
       - run: go mod tidy
       - run: go vet ./...
-      - run: go test ./... -coverprofile=coverage.out
-      - uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+      - name: Run tests with coverage
+        run: |
+          go test -v -race -coverprofile=coverage.out -covermode=atomic \
+            -coverpkg=github.com/aptlogica/sereni-jwt-provider,github.com/aptlogica/sereni-jwt-provider/internal/config,github.com/aptlogica/sereni-jwt-provider/internal/handlers,github.com/aptlogica/sereni-jwt-provider/internal/services,github.com/aptlogica/sereni-jwt-provider/internal/utils \
+            ./tests/...
+      - run: go tool cover -func=coverage.out
       - run: docker build .
