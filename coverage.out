@@ -1,4 +1,4 @@
-mode: atomic
+mode: atomic 
 github.com/aptlogica/sereni-jwt-provider/internal/config/config.go:26.63,28.16 2 6
 github.com/aptlogica/sereni-jwt-provider/internal/config/config.go:28.16,30.3 1 2
 github.com/aptlogica/sereni-jwt-provider/internal/config/config.go:31.2,31.15 1 4
