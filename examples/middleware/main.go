@@ -31,7 +31,6 @@ func main() {
 		Issuer:    "sereni-jwt-provider",
 		Algorithm: "HS256",
 	}
-
 	provider = jwt.NewProvider(config)
 
 	// Setup routes
