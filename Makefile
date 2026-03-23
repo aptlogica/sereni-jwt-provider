@@ -62,13 +62,10 @@ install: ## Install the binary to $GOPATH/bin
 	@go install $(LDFLAGS) ./...
 	@echo "✅ Installation complete"
 
-# Coverage packages to include (main package + internal packages)
-COVERPKG := github.com/aptlogica/sereni-jwt-provider,github.com/aptlogica/sereni-jwt-provider/internal/config,github.com/aptlogica/sereni-jwt-provider/internal/handlers,github.com/aptlogica/sereni-jwt-provider/internal/services,github.com/aptlogica/sereni-jwt-provider/internal/utils
-
 ##@ Testing
 test: ## Run all tests
 	@echo "Running tests..."
-	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=$(COVERPKG) ./tests/..."
+	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=./... ./tests/..."
 
 test-race: ## Run tests with race detection
 	@echo "Running tests with race detection..."
@@ -76,7 +73,7 @@ test-race: ## Run tests with race detection
 
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
-	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=$(COVERPKG) ./tests/..."
+	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=./... ./tests/..."
 	cmd /c "go tool cover -html=$(COVER_PROFILE) -o $(COVER_HTML)"
 	cmd /c "go tool cover -func=$(COVER_PROFILE)"
 	@echo "Coverage report generated: $(COVER_HTML)"

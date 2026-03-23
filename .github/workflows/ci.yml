@@ -21,7 +21,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           go test -v -race -coverprofile=coverage.out -covermode=atomic \
-            -coverpkg=github.com/aptlogica/sereni-jwt-provider,github.com/aptlogica/sereni-jwt-provider/internal/config,github.com/aptlogica/sereni-jwt-provider/internal/handlers,github.com/aptlogica/sereni-jwt-provider/internal/services,github.com/aptlogica/sereni-jwt-provider/internal/utils \
+            -coverpkg=./... \
             ./tests/...
       - run: go tool cover -func=coverage.out
       - run: docker build .
