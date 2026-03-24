@@ -73,7 +73,7 @@ test-race: ## Run tests with race detection
 
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
-	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=./... ./tests/..."
+	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=./internal/... ./tests/..."
 	cmd /c "go tool cover -html=$(COVER_PROFILE) -o $(COVER_HTML)"
 	cmd /c "go tool cover -func=$(COVER_PROFILE)"
 	@echo "Coverage report generated: $(COVER_HTML)"
