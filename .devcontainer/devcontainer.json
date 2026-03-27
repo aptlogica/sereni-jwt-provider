@@ -1,0 +1,9 @@
+{
+  "name": "sereni-jwt-provider",
+  "image": "mcr.microsoft.com/devcontainers/go:1.21",
+  "features": {},
+  "settings": {
+    "go.toolsManagement.autoUpdate": true
+  },
+  "postCreateCommand": "make test-coverage"
+}
