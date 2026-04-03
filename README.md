@@ -9,7 +9,7 @@
 
 ## Overview
 
-**sereni-jwt-provider** is an enterprise-grade JWT token service and authentication backend engineered for security, scalability, and reliability in production environments. This comprehensive JWT identity service and developer auth service features advanced token management, automated key rotation, and seamless integration capabilities for modern cloud-native applications as a backend authentication server with token based authentication and identity provider jwt capabilities for multi-tenant systems. Open source JWT server for backend authentication.
+**sereni-jwt-provider** is an open-source authentication service for generating, verifying, and managing JSON Web Tokens (JWT). It enables secure, token-based authentication for APIs, microservices, and backend applications. Designed for scalability and ease of integration, it helps protect endpoints, validate requests, and ensure only authorized access to your systems.
 
 ## Key Features
 
