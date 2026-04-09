@@ -1,6 +1,6 @@
 module github.com/aptlogica/sereni-jwt-provider/examples
 
-go 1.24.0
+go 1.26.2
 
 require github.com/aptlogica/sereni-jwt-provider v0.0.0
 
