@@ -1,6 +1,6 @@
 module github.com/aptlogica/sereni-jwt-provider
 
-go 1.24.0
+go 1.26.2
 
 toolchain go1.24.11
 
