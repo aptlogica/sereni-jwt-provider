@@ -3,7 +3,7 @@
 > Enterprise-grade JWT authentication service and open source auth provider for secure application access. A comprehensive JWT auth server and identity provider offering advanced token management, key rotation, and seamless integration with modern authentication workflows.
 
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat-square&logo=go)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/Go-1.26.2-00ADD8?style=flat-square&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Quality Gate Status](https://sonar.aptlogica.com/api/project_badges/measure?project=aptlogica_sereni-jwt-provider_e93385ef-3917-48bf-b724-ca96963f99ce&metric=alert_status&token=sqb_152d71a0f9a3621514372a3e4c87460e3059bbc2)](https://sonar.aptlogica.com/dashboard?id=aptlogica_sereni-jwt-provider_e93385ef-3917-48bf-b724-ca96963f99ce)
 
@@ -22,7 +22,7 @@
 - **Cloud-Native Architecture**: Kubernetes-ready with horizontal scaling support
 
 ## Architecture
-- Go 1.23+, idiomatic design
+- Go 1.26.2, idiomatic design
 - Modular, testable codebase
 
 ## Installation
