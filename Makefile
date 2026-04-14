@@ -65,7 +65,7 @@ install: ## Install the binary to $GOPATH/bin
 ##@ Testing
 test: ## Run all tests
 	@echo "Running tests..."
-	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=./... ./tests/..."
+	cmd /c "go test -v -race -coverprofile=$(COVER_PROFILE) -covermode=atomic -coverpkg=./internal/... ./tests/..."
 
 test-race: ## Run tests with race detection
 	@echo "Running tests with race detection..."
