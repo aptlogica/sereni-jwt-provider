@@ -1,11 +1,27 @@
-# sereni-jwt-provider - Secure JWT Authentication Service
+<h1 align="center">sereni-jwt-provider - Secure JWT Authentication Service</h1>
 
-> Enterprise-grade JWT authentication service and open source auth provider for secure application access. A comprehensive JWT auth server and identity provider offering advanced token management, key rotation, and seamless integration with modern authentication workflows.
+<p align="center">Enterprise-grade JWT authentication service and open source auth provider for secure application access. A comprehensive JWT auth server and identity provider offering advanced token management, key rotation, and seamless integration with modern authentication workflows.</p>
 
-[![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.26.2-00ADD8?style=flat-square&logo=go)](https://golang.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Quality Gate Status](https://sonar.aptlogica.com/api/project_badges/measure?project=aptlogica_sereni-jwt-provider_e93385ef-3917-48bf-b724-ca96963f99ce&metric=alert_status&token=sqb_152d71a0f9a3621514372a3e4c87460e3059bbc2)](https://sonar.aptlogica.com/dashboard?id=aptlogica_sereni-jwt-provider_e93385ef-3917-48bf-b724-ca96963f99ce)
+<p align="center">
+<a href="LICENSE"><img src="https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge" alt="Version"></a>
+<a href="https://golang.org"><img src="https://img.shields.io/badge/Go-1.26.2-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Version"></a>
+<a href="https://jwt.io/"><img src="https://img.shields.io/badge/JWT-Authentication-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="JWT"></a>
+<a href="https://gin-gonic.com/"><img src="https://img.shields.io/badge/Gin-Framework-008ECF?style=for-the-badge&logo=gin&logoColor=white" alt="Gin"></a>
+<a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"></a>
+<a href="https://swagger.io/"><img src="https://img.shields.io/badge/Swagger-Documented-85EA2D?style=for-the-badge&logo=swagger&logoColor=black" alt="Swagger"></a>
+</p>
+
+<p align="center">
+<a href="https://github.com/aptlogica/sereni-jwt-provider/actions/workflows/ci.yml"><img src="https://github.com/aptlogica/sereni-jwt-provider/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+<a href="https://github.com/aptlogica/sereni-jwt-provider/actions/workflows/github-code-scanning/codeql"><img src="https://github.com/aptlogica/sereni-jwt-provider/actions/workflows/github-code-scanning/codeql/badge.svg" alt="CodeQL"></a>
+<a href="https://sonarcloud.io/dashboard?id=aptlogica_sereni-jwt-provider"><img src="https://sonarcloud.io/api/project_badges/measure?project=aptlogica_sereni-jwt-provider&metric=alert_status" alt="Quality Gate"></a>
+<a href="https://sonarcloud.io/dashboard?id=aptlogica_sereni-jwt-provider"><img src="https://sonarcloud.io/api/project_badges/measure?project=aptlogica_sereni-jwt-provider&metric=coverage" alt="Coverage"></a>
+<a href="https://sonarcloud.io/dashboard?id=aptlogica_sereni-jwt-provider"><img src="https://sonarcloud.io/api/project_badges/measure?project=aptlogica_sereni-jwt-provider&metric=security_rating" alt="Security"></a>
+</p>
+
+<p align="center">
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
+</p>
 
 ## Overview
 
