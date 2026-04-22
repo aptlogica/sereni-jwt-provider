@@ -37,6 +37,30 @@
 - **Token-Based Authentication**: JWT auth API with JWT provider capabilities for authentication microservice deployment
 - **Cloud-Native Architecture**: Kubernetes-ready with horizontal scaling support
 
+### Token Revocation
+
+This service supports revoking specific tokens via an HTTP API endpoint. Example:
+
+```bash
+# Revoke a specific token
+curl -X POST http://localhost:8081/api/v1/auth/revoke \
+    -H 'Authorization: Bearer <admin-token>' \
+    -H 'Content-Type: application/json' \
+    -d '{"token": "<token-to-revoke>"}'
+```
+
+Revoked tokens are stored in an in-memory blacklist by default. On service restart the in-memory blacklist is cleared — for persistent revocation across restarts configure a Redis backend via `REDIS_URL` (see `ENV` configuration below).
+
+### Multi-Tenant Context
+
+`sereni-jwt-provider` supports isolated authentication contexts for multiple tenants. Recommended ways to pass a tenant ID:
+
+- **HTTP header**: `X-Tenant-ID` — used for incoming API requests and routing to tenant-specific stores or configs.
+- **JWT claim**: `tid` (tenant id) — included in issued tokens so downstream services can enforce tenant-scoped authorization.
+- **Fallback / config**: a default tenant can be configured via environment variables for single-tenant deployments.
+
+When both header and token claim are present, the service validates they match; otherwise the request is rejected.
+
 ## Architecture
 - Go 1.26.2, idiomatic design
 - Modular, testable codebase
@@ -137,9 +161,39 @@ make generate-keys
 make rotate-keys
 ```
 
+### Zero-Downtime Key Rotation
+
+`make rotate-keys` generates a new RSA key pair and triggers a graceful transition:
+
+- New tokens are signed with the new key immediately.
+- Old tokens signed with the previous key remain valid until their natural expiry.
+- After all old tokens expire, the old key is removed from the active key set.
+
+This approach ensures no users are logged out during rotation. If you rely on very short token lifetimes, schedule rotations carefully to avoid overlapping key removal before tokens expire.
+
+If you need manual control or inspection, the key material is stored in the configured keys directory; use your deployment automation to snapshot or distribute the public keys to dependent services.
+
 ## Testing
 - Run `go test ./...` to execute unit tests
 
+## Repository Topics (recommended)
+
+The GitHub repository's topics should reflect this is a Go microservice (not Node.js/TypeScript). Recommended topics:
+
+- `go`, `golang`, `microservice`, `apache-2-0`, `open-source`, `jwt`, `auth`
+
+You can update topics using the GitHub CLI, for example:
+
+```bash
+# Example: replace topics via GitHub CLI
+gh repo edit aptlogica/sereni-jwt-provider --add-topic go golang microservice apache-2-0 open-source jwt auth --remove-topic nodejs typescript
+```
+
+## SereniBase Ecosystem
+
+This service is part of the SereniBase platform. The core platform repository `sereni-base` relies on `sereni-jwt-provider` for centralized authentication. See the platform root here:
+
+- https://github.com/aptlogica/sereni-base
 ## Security
 See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
