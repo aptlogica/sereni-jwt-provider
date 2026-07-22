@@ -144,3 +144,143 @@ func TestLoadConfig_AllEnvironmentVariables(t *testing.T) {
 		t.Errorf("expected RefreshTokenDuration 86400, got %d", cfg.RefreshTokenDuration)
 	}
 }
+
+// TestValidateJWTSecret_EmptySecret tests that empty secrets are rejected
+func TestValidateJWTSecret_EmptySecret(t *testing.T) {
+	err := config.ValidateJWTSecret("")
+	if err == nil {
+		t.Error("expected error for empty JWT_SECRET, got nil")
+	}
+}
+
+// TestValidateJWTSecret_TooShort tests that secrets shorter than 32 characters are rejected
+func TestValidateJWTSecret_TooShort(t *testing.T) {
+	testCases := []string{
+		"a",
+		"abc",
+		"secret",
+		"changeme",
+		"weak123",
+		"shortpass",
+		"12345678",
+		"verylongbutnotlongenoughyet", // 28 chars
+	}
+
+	for _, secret := range testCases {
+		t.Run("secret="+secret[:len(secret)/2+1], func(t *testing.T) {
+			err := config.ValidateJWTSecret(secret)
+			if err == nil {
+				t.Errorf("expected error for secret with %d chars, got nil", len(secret))
+			}
+		})
+	}
+}
+
+// TestValidateJWTSecret_ValidLength tests that secrets 32+ characters are accepted (if not weak pattern)
+func TestValidateJWTSecret_ValidLength(t *testing.T) {
+	testCases := []string{
+		testSigningKey(t), // 64-char hex string
+		"this_is_a_valid_secret_with_32_chars_minimum_len", // 52 chars
+		"AbCdEfGhIjKlMnOpQrStUvWxYz123456",                 // 32 chars mixed case + digits
+		"super_secure_jwt_secret_with_special_!@#$%",       // 40+ chars with special
+	}
+
+	for _, secret := range testCases {
+		t.Run("valid_"+secret[:16], func(t *testing.T) {
+			err := config.ValidateJWTSecret(secret)
+			if err != nil {
+				t.Errorf("expected no error for valid secret, got: %v", err)
+			}
+		})
+	}
+}
+
+// TestValidateJWTSecret_AllSameCharacter tests that secrets with all same characters are rejected
+func TestValidateJWTSecret_AllSameCharacter(t *testing.T) {
+	testCases := []string{
+		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // 34 'a's
+		"1111111111111111111111111111111111", // 34 '1's
+		"________________________________",   // 32 underscores
+	}
+
+	for _, secret := range testCases {
+		t.Run("all_same_char_"+string(secret[0]), func(t *testing.T) {
+			err := config.ValidateJWTSecret(secret)
+			if err == nil {
+				t.Errorf("expected error for weak pattern (all same character), got nil")
+			}
+		})
+	}
+}
+
+// TestValidateJWTSecret_LowCharacterVariety tests that secrets with very low character variety are rejected
+func TestValidateJWTSecret_LowCharacterVariety(t *testing.T) {
+	testCases := []string{
+		"abcdefghijklmnopqrstuvwxyzabcdefgh",  // only lowercase
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGH",  // only uppercase
+		"12345678901234567890123456789012345", // only digits
+	}
+
+	for _, secret := range testCases {
+		t.Run("low_variety_"+secret[:8], func(t *testing.T) {
+			err := config.ValidateJWTSecret(secret)
+			if err == nil {
+				t.Errorf("expected error for low character variety, got nil")
+			}
+		})
+	}
+}
+
+// TestValidateJWTSecret_MixedVariety tests that base64 and similar mixed-case secrets are accepted
+func TestValidateJWTSecret_MixedVariety(t *testing.T) {
+	testCases := []string{
+		"abcdefghijklmnopqrstuvwxyz12345678", // lowercase + digits (like base64)
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ12345678", // uppercase + digits (like base64)
+		"AbCdEfGhIjKlMnOpQrStUvWxYz123456",   // mixed case + digits
+	}
+
+	for _, secret := range testCases {
+		t.Run("mixed_variety_"+secret[:8], func(t *testing.T) {
+			err := config.ValidateJWTSecret(secret)
+			if err != nil {
+				t.Errorf("expected no error for base64-like secret with mixed variety, got: %v", err)
+			}
+		})
+	}
+}
+
+// TestValidateJWTSecret_HighCharacterVariety tests that secrets with high character variety are accepted
+func TestValidateJWTSecret_HighCharacterVariety(t *testing.T) {
+	testCases := []string{
+		"AbCdEfGhIjKlMnOpQrStUvWxYz123456",  // mixed case + digits
+		"Aa1!_-+Bb2@#$Cc3%^&Dd4*(e5)fFgGhH", // mixed with special chars
+		"MySecretKey!WithNumbers123AndCaps", // realistic looking secret
+	}
+
+	for _, secret := range testCases {
+		t.Run("high_variety_"+secret[:8], func(t *testing.T) {
+			err := config.ValidateJWTSecret(secret)
+			if err != nil {
+				t.Errorf("expected no error for high character variety, got: %v", err)
+			}
+		})
+	}
+}
+
+// TestValidateJWTSecret_Base64Encoded tests that base64-encoded secrets are accepted
+func TestValidateJWTSecret_Base64Encoded(t *testing.T) {
+	// Base64 strings contain both upper and lower case letters + digits, meeting variety requirement
+	testCases := []string{
+		"dGhpc2lzYXZhbGlkYmFzZTY0c3RyaW5nd2l0aHBhZGRpbmdAQUEA", // valid base64
+		"SGVsbG9Xb3JsZFdpdGhCYXNlNjRFbmNvZGluZ0FuZFBhZGRpbmc=", // with padding
+	}
+
+	for _, secret := range testCases {
+		t.Run("base64_"+secret[:12], func(t *testing.T) {
+			err := config.ValidateJWTSecret(secret)
+			if err != nil {
+				t.Errorf("expected no error for base64-encoded secret, got: %v", err)
+			}
+		})
+	}
+}

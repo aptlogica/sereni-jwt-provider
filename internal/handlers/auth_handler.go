@@ -6,12 +6,13 @@
 package handlers
 
 import (
-	"fmt"
+	"log"
+	"net/http"
+
 	serrors "github.com/aptlogica/sereni-jwt-provider/internal/errors"
 	"github.com/aptlogica/sereni-jwt-provider/internal/models"
 	"github.com/aptlogica/sereni-jwt-provider/internal/services"
 	"github.com/aptlogica/sereni-jwt-provider/internal/utils"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -77,7 +78,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 	tokens, err := h.jwtService.RefreshAccessToken(req.RefreshToken)
 	if err != nil {
-		fmt.Println("err: ", err)
+		log.Printf("[ERROR] RefreshAccessToken failed: %v\n", err)
 		utils.SendError(c, http.StatusUnauthorized, "REFRESH_FAILED", "Invalid or expired refresh token")
 		return
 	}
@@ -104,41 +105,50 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 	}
 
 	claims, err := h.jwtService.ValidateToken(req.Token, true)
-	fmt.Printf("[DEBUG] ValidateToken: token=%s, claims=%+v, err=%v\n", req.Token, claims, err)
+	subject := ""
+	if claims != nil {
+		subject = claims.Subject
+	}
+	log.Printf("[DEBUG] ValidateToken: subject=%s, err=%v\n", subject, err)
+
 	if err != nil || claims == nil {
-		if err == serrors.ErrTokenExpire {
-			utils.SendError(c, http.StatusUnauthorized, "TOKEN_EXPIRED", "Token has expired")
-			return
-		}
-		if err == serrors.ErrInvalidToken {
-			utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid")
-			return
-		}
-		utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid or expired")
+		h.handleValidateTokenError(c, err)
 		return
 	}
 
-	// Convert to Swagger-friendly format
-	tokenClaims := models.TokenClaims{}
-	if claims != nil {
-		tokenClaims.UserID = claims.UserID
-		tokenClaims.Email = claims.Email
-		tokenClaims.Roles = claims.Roles
-		tokenClaims.TokenType = claims.TokenType
-		tokenClaims.Issuer = claims.Issuer
-		tokenClaims.Subject = claims.Subject
-		if claims.ExpiresAt != nil {
-			tokenClaims.ExpiresAt = claims.ExpiresAt.Unix()
-		}
-		if claims.IssuedAt != nil {
-			tokenClaims.IssuedAt = claims.IssuedAt.Unix()
-		}
-		if claims.NotBefore != nil {
-			tokenClaims.NotBefore = claims.NotBefore.Unix()
-		}
-	}
+	utils.SendSuccess(c, "TOKEN_VALID", "Token is valid", buildTokenClaims(claims))
+}
 
-	utils.SendSuccess(c, "TOKEN_VALID", "Token is valid", tokenClaims)
+func (h *AuthHandler) handleValidateTokenError(c *gin.Context, err error) {
+	switch err {
+	case serrors.ErrTokenExpire:
+		utils.SendError(c, http.StatusUnauthorized, "TOKEN_EXPIRED", "Token has expired")
+	case serrors.ErrInvalidToken:
+		utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid")
+	default:
+		utils.SendError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is invalid or expired")
+	}
+}
+
+func buildTokenClaims(claims *models.CustomClaims) models.TokenClaims {
+	result := models.TokenClaims{
+		UserID:    claims.UserID,
+		Email:     claims.Email,
+		Roles:     claims.Roles,
+		TokenType: claims.TokenType,
+		Issuer:    claims.Issuer,
+		Subject:   claims.Subject,
+	}
+	if claims.ExpiresAt != nil {
+		result.ExpiresAt = claims.ExpiresAt.Unix()
+	}
+	if claims.IssuedAt != nil {
+		result.IssuedAt = claims.IssuedAt.Unix()
+	}
+	if claims.NotBefore != nil {
+		result.NotBefore = claims.NotBefore.Unix()
+	}
+	return result
 }
 
 // VerifyToken godoc

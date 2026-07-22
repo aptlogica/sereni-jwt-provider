@@ -6,10 +6,11 @@
 package services
 
 import (
-	"fmt"
+	"log"
+	"time"
+
 	serrors "github.com/aptlogica/sereni-jwt-provider/internal/errors"
 	"github.com/aptlogica/sereni-jwt-provider/internal/models"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -34,7 +35,7 @@ func NewJWTService(secretKey string, accessTokenDuration, refreshTokenDuration i
 		accessTokenDuration:  time.Duration(accessTokenDuration) * time.Second,
 		refreshTokenDuration: time.Duration(refreshTokenDuration) * time.Second,
 	}
-	fmt.Printf("[DEBUG] JWTService: accessTokenDuration=%v seconds, refreshTokenDuration=%v seconds\n", svc.accessTokenDuration.Seconds(), svc.refreshTokenDuration.Seconds())
+	log.Printf("[DEBUG] JWTService: accessTokenDuration=%v seconds, refreshTokenDuration=%v seconds\n", svc.accessTokenDuration.Seconds(), svc.refreshTokenDuration.Seconds())
 	return svc
 }
 
@@ -53,7 +54,7 @@ func (s *JWTService) Login(loginReq *models.LoginRequest) (*models.TokenResponse
 
 // GenerateTokenPair generates access and refresh tokens
 func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse, error) {
-	fmt.Printf("[DEBUG] GenerateTokenPair: userID=%s, email=%s, roles=%v\n, email_verified=%v\n", user.ID, user.Email, user.Roles, user.EMAIL_VERIFIED)
+	log.Printf("[DEBUG] GenerateTokenPair: subject=%s\n", user.ID)
 	// Generate access token
 	accessToken, err := s.generateToken(user, TokenTypeAccess, s.accessTokenDuration)
 	if err != nil {
@@ -79,7 +80,7 @@ func (s *JWTService) GenerateTokenPair(user *models.User) (*models.TokenResponse
 func (s *JWTService) generateToken(user *models.User, tokenType string, duration time.Duration) (string, error) {
 	now := time.Now()
 	exp := now.Add(duration)
-	fmt.Printf("[DEBUG] generateToken: now=%v, duration=%v, exp=%v (seconds diff=%v)\n", now.Unix(), duration.Seconds(), exp.Unix(), exp.Unix()-now.Unix())
+	log.Printf("[DEBUG] generateToken: now=%v, duration=%v, exp=%v (seconds diff=%v)\n", now.Unix(), duration.Seconds(), exp.Unix(), exp.Unix()-now.Unix())
 
 	// Convert roles array to comma-separated string
 	rolesStr := ""
@@ -131,7 +132,7 @@ func (s *JWTService) ValidateToken(tokenString string, checkExpiry bool) (*model
 		return nil, serrors.ErrInvalidToken
 	}
 
-	if claims.ExpiresAt != nil && time.Now().After(claims.ExpiresAt.Time) {
+	if checkExpiry && claims.ExpiresAt != nil && time.Now().After(claims.ExpiresAt.Time) {
 		return nil, serrors.ErrTokenExpire
 	}
 

@@ -16,6 +16,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/aptlogica/sereni-jwt-provider/internal/config"
 	"github.com/aptlogica/sereni-jwt-provider/internal/handlers"
@@ -58,8 +59,10 @@ func main() {
 
 	// Load configuration
 	cfg := config.LoadConfig()
-	if cfg.JWTSecret == "" {
-		log.Fatal("JWT_SECRET environment variable is required — refusing to start")
+
+	// Validate JWT secret strength at startup
+	if err := config.ValidateJWTSecret(cfg.JWTSecret); err != nil {
+		log.Fatalf("JWT_SECRET validation failed: %v", err)
 	}
 
 	ginMode := os.Getenv("GIN_MODE")
@@ -76,7 +79,8 @@ func main() {
 
 	// CORS Setup
 	router.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
+		// AllowAllOrigins:  true,
+		AllowOrigins:     strings.Split(cfg.AllowedOrigins, ","),
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
