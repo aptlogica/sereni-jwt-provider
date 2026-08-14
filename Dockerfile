@@ -1,7 +1,7 @@
 # ==============================================================================
 # Build Stage
 # ==============================================================================
-FROM golang:1.26.5-alpine3.24@sha256:111d79159b2326f7e80c4a4706e1ba166acb0e2611df853955f3621828cd49e8 AS builder
+FROM golang:1.27rc2-alpine3.24@sha256:dcbb18cc5fa1082364dc6aa95224b6b55429d09cbb9631a053d8064c1c367300 AS builder
 RUN go version
 
 # Install build dependencies
